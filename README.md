@@ -1,36 +1,79 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PriceIQ
 
-## Getting Started
+AI-powered price comparison across Amazon.in, Flipkart, and Vijay Sales. Search any Indian electronics product and get real-time prices from all three platforms, plus an AI-generated recommendation powered by LLaMA 3.3 via Groq.
 
-First, run the development server:
+## Tech Stack
+
+- **Framework** — Next.js 14 (App Router), TypeScript
+- **UI** — Tailwind CSS, shadcn/ui
+- **Database** — PostgreSQL (Docker) + Prisma 7
+- **Scraping** — Playwright (Flipkart), HTTP fetch (Amazon.in), GraphQL (Vijay Sales)
+- **AI** — Groq API (`llama-3.3-70b-versatile`)
+
+## Prerequisites
+
+- Node.js 18+
+- Docker & Docker Compose
+- A Groq API key (free at [console.groq.com](https://console.groq.com))
+
+## Setup
+
+### 1. Install dependencies
+
+```bash
+npm install
+npx playwright install chromium
+```
+
+### 2. Configure environment
+
+Create `.env.local` in the project root:
+
+```env
+DATABASE_URL="postgresql://aggregator:aggregator@localhost:5432/aggregator"
+GROQ_API_KEY="your_groq_api_key_here"
+SCRAPE_SECRET="changeme"
+```
+
+### 3. Start the database
+
+```bash
+docker compose up -d
+```
+
+Wait a few seconds for PostgreSQL to be ready, then push the schema:
+
+```bash
+npm run db:push
+```
+
+### 4. Seed the database
+
+This scrapes all three platforms for 12 pre-defined products (smartphones, laptops, headphones, TVs) and stores them in the DB. Takes about 3–5 minutes.
+
+```bash
+npm run seed
+```
+
+### 5. Run the app
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How it works
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Products already in DB** — results appear instantly from PostgreSQL.
+- **Products not in DB** — the app automatically scrapes Amazon.in, Flipkart, and Vijay Sales in real time, saves the results, and redirects you to the product page with a live AI analysis.
 
-## Learn More
+## Other commands
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Command | Description |
+|---|---|
+| `npm run seed` | Re-scrape all pre-defined products and refresh the DB |
+| `npm run db:push` | Apply schema changes to the database |
+| `npm run db:studio` | Open Prisma Studio (visual DB browser) at localhost:5555 |
+| `docker compose down` | Stop the PostgreSQL container |
+| `docker compose down -v` | Stop and delete all DB data |

@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  category    String
+  domain      String   @default("electronics")
+  brand       String?
+  description String?
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  listings     ProductListing[]
+  priceHistory PriceHistory[]
+  analyses     AIAnalysis[]
+
+  @@index([category])
+  @@index([domain])
+  @@index([name])
+  @@index([brand])
+}
+
+model ProductListing {
+  id          String   @id @default(cuid())
+  productId   String
+  source      String
+  sourceId    String
+  title       String
+  price       Float?
+  currency    String   @default("INR")
+  rating      Float?
+  reviewCount Int?
+  imageUrl    String?
+  url         String?
+  inStock     Boolean  @default(true)
+  description String?
+  extraData   Json?
+  fetchedAt   DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, source])
+  @@index([source])
+  @@index([productId])
+}
+
+model PriceHistory {
+  id         String   @id @default(cuid())
+  productId  String
+  source     String
+  price      Float
+  recordedAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, recordedAt])
+}
+
+model AIAnalysis {
+  id             String   @id @default(cuid())
+  productId      String
+  summary        String   @db.Text
+  recommendation String   @db.Text
+  bestSource     String
+  confidenceNote String?
+  generatedAt    DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model SearchLog {
+  id           String   @id @default(cuid())
+  query        String
+  resultsCount Int
+  searchedAt   DateTime @default(now())
+
+  @@index([searchedAt])
+  @@index([query])
+}
