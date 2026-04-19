@@ -18,6 +18,24 @@ const SOURCE_LABELS: Record<string, string> = {
   flipkart: "Flipkart",
 };
 
+export async function generateProductSummary(
+  name: string,
+  category: string
+): Promise<string> {
+  const response = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    messages: [
+      {
+        role: "user",
+        content: `Write a single concise paragraph (2–3 sentences, max 55 words) describing the ${category} product "${name}" for an Indian e-commerce price comparison site. Focus on what it is and its key appeal. Be factual, no marketing fluff.`,
+      },
+    ],
+    max_tokens: 120,
+    temperature: 0.3,
+  });
+  return response.choices[0].message.content?.trim() ?? "";
+}
+
 export async function analyzeProduct(
   productName: string,
   category: string,

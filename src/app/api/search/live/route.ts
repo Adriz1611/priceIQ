@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { liveSearch } from "@/lib/scrapers/live";
-import { analyzeProduct } from "@/lib/ai/groq";
+import { analyzeProduct, generateProductSummary } from "@/lib/ai/groq";
 
 export async function POST(req: NextRequest) {
   const { query } = await req.json() as { query: string };
@@ -96,6 +96,14 @@ export async function POST(req: NextRequest) {
     }
   } catch {
     // AI is best-effort
+  }
+
+  // Generate product description if missing
+  if (!product.description) {
+    try {
+      const desc = await generateProductSummary(products[0].name, category);
+      if (desc) await prisma.product.update({ where: { id: product.id }, data: { description: desc } });
+    } catch { /* best-effort */ }
   }
 
   return NextResponse.json({ success: true, productId: product.id, aiAnalysis });

@@ -134,6 +134,7 @@ async function liveAmazon(
     const brandText = pHtml.match(/<a id="bylineInfo"[^>]*>([^<]+)/)?.[1]?.trim();
     const brand = brandText?.replace(/^Visit the /, "").replace(/ Store$/, "") ?? undefined;
     const cleanTitle = cleanProductName(title);
+    const inStock = !pHtml.includes("Currently unavailable") && !pHtml.includes("unavailableBlock");
 
     return {
       name: cleanTitle,
@@ -149,7 +150,7 @@ async function liveAmazon(
       reviewCount: reviewStr ? parseInt(reviewStr) : undefined,
       url: `https://www.amazon.in/dp/${asin}`,
       imageUrl: imageUrl ?? undefined,
-      inStock: true,
+      inStock,
     };
   }
   return null;

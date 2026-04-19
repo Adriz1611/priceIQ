@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { Check } from "lucide-react";
 
 const SORT_OPTIONS = [
   { value: "", label: "Relevance" },
@@ -10,17 +11,53 @@ const SORT_OPTIONS = [
 ];
 
 const SOURCES = [
-  { value: "", label: "All sources" },
-  { value: "amazon", label: "Amazon.in" },
-  { value: "flipkart", label: "Flipkart" },
-  { value: "vijaysales", label: "Vijay Sales" },
+  { value: "", label: "All sources", dot: null },
+  { value: "amazon", label: "Amazon.in", dot: "bg-amber-500" },
+  { value: "flipkart", label: "Flipkart", dot: "bg-blue-500" },
+  { value: "vijaysales", label: "Vijay Sales", dot: "bg-orange-500" },
 ];
 
 interface SearchFiltersProps {
   categories: string[];
+  onSelect?: () => void;
 }
 
-export function SearchFilters({ categories }: SearchFiltersProps) {
+function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground mb-2 px-1">
+        {title}
+      </p>
+      <div className="space-y-0.5">{children}</div>
+    </div>
+  );
+}
+
+function FilterButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left text-sm px-3 py-2 rounded-lg transition-all duration-150 flex items-center justify-between gap-2 ${
+        active
+          ? "bg-foreground text-background font-semibold"
+          : "text-foreground/70 hover:text-foreground hover:bg-secondary font-medium"
+      }`}
+    >
+      <span className="truncate">{children}</span>
+      {active && <Check className="h-3.5 w-3.5 shrink-0 opacity-80" />}
+    </button>
+  );
+}
+
+export function SearchFilters({ categories, onSelect }: SearchFiltersProps) {
   const router = useRouter();
   const params = useSearchParams();
 
@@ -29,85 +66,57 @@ export function SearchFilters({ categories }: SearchFiltersProps) {
     if (value) next.set(key, value);
     else next.delete(key);
     router.push(`/search?${next.toString()}`);
+    onSelect?.();
   };
 
   const active = (key: string, value: string) => (params.get(key) ?? "") === value;
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-          Sort
-        </p>
-        <div className="space-y-0.5">
-          {SORT_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => set("sort", opt.value)}
-              className={`w-full text-left text-sm px-2.5 py-1.5 rounded-md transition-colors ${
-                active("sort", opt.value)
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <FilterSection title="Sort">
+        {SORT_OPTIONS.map((opt) => (
+          <FilterButton
+            key={opt.value}
+            active={active("sort", opt.value)}
+            onClick={() => set("sort", opt.value)}
+          >
+            {opt.label}
+          </FilterButton>
+        ))}
+      </FilterSection>
 
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-          Source
-        </p>
-        <div className="space-y-0.5">
-          {SOURCES.map((s) => (
-            <button
-              key={s.value}
-              onClick={() => set("source", s.value)}
-              className={`w-full text-left text-sm px-2.5 py-1.5 rounded-md transition-colors ${
-                active("source", s.value)
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              }`}
-            >
+      <FilterSection title="Platform">
+        {SOURCES.map((s) => (
+          <FilterButton
+            key={s.value}
+            active={active("source", s.value)}
+            onClick={() => set("source", s.value)}
+          >
+            <span className="flex items-center gap-2">
+              {s.dot && (
+                <span className={`w-2 h-2 rounded-full shrink-0 ${active("source", s.value) ? "bg-background" : s.dot}`} />
+              )}
               {s.label}
-            </button>
-          ))}
-        </div>
-      </div>
+            </span>
+          </FilterButton>
+        ))}
+      </FilterSection>
 
       {categories.length > 0 && (
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-            Category
-          </p>
-          <div className="flex flex-col gap-0.5">
-            <button
-              onClick={() => set("category", "")}
-              className={`text-left text-sm px-2.5 py-1.5 rounded-md transition-colors ${
-                !params.get("category")
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              }`}
+        <FilterSection title="Category">
+          <FilterButton active={!params.get("category")} onClick={() => set("category", "")}>
+            All categories
+          </FilterButton>
+          {categories.map((cat) => (
+            <FilterButton
+              key={cat}
+              active={params.get("category") === cat}
+              onClick={() => set("category", params.get("category") === cat ? "" : cat)}
             >
-              All categories
-            </button>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => set("category", params.get("category") === cat ? "" : cat)}
-                className={`text-left text-sm px-2.5 py-1.5 rounded-md transition-colors ${
-                  params.get("category") === cat
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
+              {cat}
+            </FilterButton>
+          ))}
+        </FilterSection>
       )}
     </div>
   );

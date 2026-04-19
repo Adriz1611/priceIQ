@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { analyzeProduct } from "@/lib/ai/groq";
+import { analyzeProduct, generateProductSummary } from "@/lib/ai/groq";
 import { Prisma } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
@@ -57,6 +57,16 @@ export async function POST(req: NextRequest) {
       confidenceNote: result.confidenceNote,
     },
   });
+
+  // Generate product description if missing
+  if (!product.description) {
+    try {
+      const summary = await generateProductSummary(product.name, product.category);
+      if (summary) {
+        await prisma.product.update({ where: { id: product.id }, data: { description: summary } });
+      }
+    } catch { /* best-effort */ }
+  }
 
   return NextResponse.json({ success: true, data: analysis, cached: false });
 }
