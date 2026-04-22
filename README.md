@@ -12,7 +12,7 @@ AI-powered price comparison across Amazon.in, Flipkart, and Vijay Sales. Search 
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js v22.22+
 - Docker & Docker Compose
 - A Groq API key (free at [console.groq.com](https://console.groq.com))
 
@@ -45,6 +45,12 @@ Wait a few seconds for PostgreSQL to be ready, then push the schema:
 
 ```bash
 npm run db:push
+```
+
+Generate Prisma client:
+
+```bash
+npx prisma generate
 ```
 
 ### 4. Seed the database

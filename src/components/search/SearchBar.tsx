@@ -25,18 +25,7 @@ export function SearchBar() {
 
   useEffect(() => { setValue(params.get("q") ?? ""); }, [params]);
 
-  // Navigate to search page on debounce
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const next = new URLSearchParams(params.toString());
-      if (value.trim()) next.set("q", value.trim());
-      else next.delete("q");
-      router.push(`/search?${next.toString()}`);
-    }, 400);
-    return () => clearTimeout(t);
-  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Fetch suggestions on debounce
+  // Fetch autocomplete suggestions as user types (dropdown only — does NOT navigate)
   useEffect(() => {
     if (value.trim().length < 2) { setSuggestions([]); return; }
     const t = setTimeout(async () => {
@@ -49,6 +38,14 @@ export function SearchBar() {
     }, 200);
     return () => clearTimeout(t);
   }, [value]);
+
+  const submitSearch = () => {
+    setShowDropdown(false);
+    const next = new URLSearchParams(params.toString());
+    if (value.trim()) next.set("q", value.trim());
+    else next.delete("q");
+    router.push(`/search?${next.toString()}`);
+  };
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -68,29 +65,46 @@ export function SearchBar() {
 
   return (
     <div ref={containerRef} className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-      <Input
-        value={value}
-        onChange={(e) => { setValue(e.target.value); setShowDropdown(true); }}
-        onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
-        placeholder="Search products, brands, categories…"
-        className="pl-9 pr-8"
-      />
-      {value && (
+      <form onSubmit={(e) => { e.preventDefault(); submitSearch(); }}>
         <button
-          onClick={() => { setValue(""); setSuggestions([]); setShowDropdown(false); }}
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          type="submit"
+          aria-label="Search"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground z-10"
         >
-          <X className="h-3.5 w-3.5" />
+          <Search className="h-4 w-4" />
         </button>
-      )}
+        <Input
+          value={value}
+          onChange={(e) => { setValue(e.target.value); setShowDropdown(true); }}
+          onFocus={() => suggestions.length > 0 && setShowDropdown(true)}
+          placeholder="Search products, brands, categories…"
+          className="pl-9 pr-8"
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={() => { setValue(""); setSuggestions([]); setShowDropdown(false); }}
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </form>
 
       {showDropdown && suggestions.length > 0 && (
-        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border border-border rounded-lg shadow-lg overflow-hidden">
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-popover text-popover-foreground border border-border rounded-lg shadow-lg overflow-hidden">
+          <button
+            type="button"
+            onClick={submitSearch}
+            className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-muted transition-colors border-b border-border text-sm"
+          >
+            <Search className="h-3.5 w-3.5 text-muted-foreground" />
+            <span>Search for <span className="font-medium">&ldquo;{value}&rdquo;</span></span>
+          </button>
           {suggestions.map((s) => (
             <button
               key={s.id}
-              onMouseDown={() => selectSuggestion(s.id)}
+              onClick={() => selectSuggestion(s.id)}
               className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted transition-colors"
             >
               {s.imageUrl ? (
