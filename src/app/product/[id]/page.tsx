@@ -7,7 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PriceComparisonTable } from "@/components/product/PriceComparisonTable";
 import { AIRecommendation } from "@/components/product/AIRecommendation";
 import { RefreshPricesButton } from "@/components/product/RefreshPricesButton";
-import { Prisma } from "@prisma/client";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -61,7 +60,7 @@ export default async function ProductPage({ params }: Props) {
     reviewCount: l.reviewCount,
     inStock: l.inStock,
     url: l.url,
-    extraData: l.extraData as Prisma.JsonObject | null,
+    extraData: l.extraData as Record<string, unknown> | null,
   }));
 
   return (

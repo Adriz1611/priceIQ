@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { analyzeProduct, generateProductSummary } from "@/lib/ai/groq";
-import { Prisma } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
   const { productId } = await req.json();
@@ -44,7 +43,7 @@ export async function POST(req: NextRequest) {
       rating: l.rating,
       reviewCount: l.reviewCount,
       inStock: l.inStock,
-      extraData: l.extraData as Prisma.JsonObject | null,
+      extraData: l.extraData as Record<string, unknown> | null,
     }))
   );
 
