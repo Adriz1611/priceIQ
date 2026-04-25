@@ -33,9 +33,9 @@ npm run dev                   # start Next.js at localhost:3000
 ## Environment — `.env.local`
 
 ```
-DATABASE_URL="postgresql://aggregator:aggregator@localhost:5432/aggregator"
-GROQ_API_KEY="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"
-SCRAPE_SECRET="changeme"
+DATABASE_URL=""
+GROQ_API_KEY=""
+SCRAPE_SECRET=""
 ```
 
 ## Data sources
