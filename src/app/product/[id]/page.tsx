@@ -51,7 +51,17 @@ export default async function ProductPage({ params }: Props) {
   const avgRating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : 0;
   const totalReviews = product.listings.reduce((sum, l) => sum + (l.reviewCount ?? 0), 0);
 
-  const listingsForTable = product.listings.map((l) => ({
+  const listingsForTable = product.listings.map((l: {
+    id: string;
+    source: string;
+    price: number | null;
+    currency: string;
+    rating: number | null;
+    reviewCount: number | null;
+    inStock: boolean;
+    url: string | null;
+    extraData: unknown;
+  }) => ({
     id: l.id,
     source: l.source,
     price: l.price,

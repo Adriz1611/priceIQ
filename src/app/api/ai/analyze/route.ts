@@ -36,7 +36,15 @@ export async function POST(req: NextRequest) {
     product.name,
     product.category,
     product.domain,
-    product.listings.map((l) => ({
+    product.listings.map((l: {
+      source: string;
+      price: number | null;
+      currency: string;
+      rating: number | null;
+      reviewCount: number | null;
+      inStock: boolean;
+      extraData: unknown;
+    }) => ({
       source: l.source,
       price: l.price,
       currency: l.currency,
