@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
-import { Moon, Sun } from "lucide-react";
 
 const NAV = [
   { href: "/search", label: "Search" },
@@ -12,7 +10,6 @@ const NAV = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
 
   return (
     <header className="sticky top-0 z-50 glass border-b border-border/60">
@@ -44,16 +41,6 @@ export function Navbar() {
             );
           })}
 
-          <div className="mx-2 h-4 w-px bg-border" />
-
-          <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-all duration-200"
-            aria-label="Toggle theme"
-          >
-            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          </button>
         </nav>
       </div>
     </header>

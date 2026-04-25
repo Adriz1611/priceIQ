@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Star, ShoppingBag, ArrowRight } from "lucide-react";
+import { DeleteProductButton } from "./DeleteProductButton";
 
 interface ProductCardProps {
   id: string;
@@ -32,9 +33,11 @@ export function ProductCard({
   inStock,
 }: ProductCardProps) {
   return (
+    <div className="relative group/card">
+      <DeleteProductButton id={id} />
     <Link
       href={`/product/${id}`}
-      className="group card-lift relative flex gap-4 rounded-2xl border border-border bg-card p-4 hover:border-primary/30 overflow-hidden"
+      className="group card-lift flex gap-4 rounded-2xl border border-border bg-card p-4 hover:border-primary/30 overflow-hidden"
     >
       {/* Image */}
       <div className="relative shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-muted flex items-center justify-center border border-border/50">
@@ -103,5 +106,6 @@ export function ProductCard({
       {/* Arrow */}
       <ArrowRight className="shrink-0 self-center h-4 w-4 text-muted-foreground/30 group-hover:text-primary group-hover:translate-x-0.5 transition-all duration-200" />
     </Link>
+    </div>
   );
 }

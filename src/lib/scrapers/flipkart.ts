@@ -46,46 +46,71 @@ export async function scrapeFlipkart(): Promise<NormalizedProduct[]> {
       try {
         await page.goto(
           `https://www.flipkart.com/search?q=${encodeURIComponent(product.fkQuery)}&sort=popularity`,
-          { waitUntil: "networkidle", timeout: 20000 }
+          { waitUntil: "domcontentloaded", timeout: 25000 }
         );
+        await page.waitForTimeout(3000);
 
+        // page.evaluate must use only inline code — tsx/esbuild injects __name()
+        // into named function declarations which breaks in the browser sandbox.
         const found = await page.evaluate((minPrice: number) => {
-          const priceEls = document.querySelectorAll(".hZ3P6w, .Nx9bqj, ._30jeq3");
+          const priceEls = Array.from(document.querySelectorAll("div, span")).filter((el) => {
+            if (el.children.length > 0) return false;
+            return /^₹[\d,]+$/.test((el as HTMLElement).innerText?.trim() || "");
+          });
+
           for (const priceEl of priceEls) {
-            let el: Element | null = priceEl.parentElement;
-            for (let i = 0; i < 10 && el; i++) {
-              const link = el.querySelector<HTMLAnchorElement>("a[href*='/p/']");
-              const img = el.querySelector<HTMLImageElement>("img");
-              if (link && img) {
-                const price = parseInt(priceEl.textContent?.replace(/[^0-9]/g, "") || "0");
-                if (price < minPrice) break;
+            const price = parseInt((priceEl as HTMLElement).innerText.replace(/[^0-9]/g, ""));
+            if (price < minPrice || price > 1000000) continue;
 
-                const textEls = el.querySelectorAll("a, div, span");
-                let longestText = "";
-                textEls.forEach((te) => {
-                  if (te.children.length === 0) {
-                    const t = (te as HTMLElement).innerText?.trim() || "";
-                    if (t.length > longestText.length && t.length < 200 && !t.includes("₹") && !t.includes("Rating")) {
-                      longestText = t;
-                    }
-                  }
-                });
-
-                const rating = el.querySelector<HTMLElement>(".XQDdHH, ._3LWZlK, .WkcPbg");
-                const reviewEl = el.querySelector<HTMLElement>(".Wphh3N, ._2_R_DZ");
-                const reviewText = reviewEl?.innerText?.replace(/[^0-9]/g, "") || null;
-
-                return {
-                  name: longestText,
-                  price,
-                  url: "https://www.flipkart.com" + link.getAttribute("href")!.split("?")[0],
-                  imageUrl: img.getAttribute("src") || "",
-                  rating: rating?.innerText ? parseFloat(rating.innerText) : null,
-                  reviewCount: reviewText ? parseInt(reviewText) : null,
-                };
-              }
-              el = el.parentElement;
+            // Walk up to find a card container that has BOTH a product link AND an img.
+            // Flipkart sometimes wraps only the price section in <a>, with image/title outside.
+            let container: Element | null = priceEl.parentElement;
+            let link: HTMLAnchorElement | null = null;
+            let img: HTMLImageElement | null = null;
+            for (let s = 0; container && container !== document.body && s < 15; s++) {
+              link = container.querySelector<HTMLAnchorElement>("a[href*='/p/']");
+              img = container.querySelector<HTMLImageElement>("img");
+              if (link && img) break;
+              container = container.parentElement;
             }
+            if (!link || !img || !container) continue;
+
+            // Within the card, pick the LOWEST price >= minPrice to get sale price, not MRP.
+            let salePrice = price;
+            for (const pe of Array.from(container.querySelectorAll("div, span"))) {
+              if (pe.children.length > 0) continue;
+              const t = (pe as HTMLElement).innerText?.trim() || "";
+              if (!/^₹[\d,]+$/.test(t)) continue;
+              const p = parseInt(t.replace(/[^0-9]/g, ""));
+              if (p >= minPrice && p < salePrice) salePrice = p;
+            }
+
+            const imgSrc = img.getAttribute("src") || img.getAttribute("data-src") || "";
+            let name = "";
+            container.querySelectorAll("div, span, a").forEach((te) => {
+              if (te.children.length === 0) {
+                const t = (te as HTMLElement).innerText?.trim() || "";
+                if (
+                  t.length > name.length && t.length > 10 && t.length < 300 &&
+                  !t.includes("₹") && !t.includes("%") &&
+                  !/^\d+(\.\d+)?$/.test(t) &&
+                  !t.toLowerCase().includes("offer")
+                ) name = t;
+              }
+            });
+            if (!name) continue;
+
+            let rating: number | null = null;
+            for (const le of Array.from(container.querySelectorAll("div, span"))) {
+              if (le.children.length > 0) continue;
+              const t = (le as HTMLElement).innerText?.trim() || "";
+              const r = parseFloat(t);
+              if (r >= 1 && r <= 5 && /^\d\.\d$/.test(t)) { rating = r; break; }
+            }
+
+            const href = link.getAttribute("href") || "";
+            const url = href.startsWith("http") ? href.split("?")[0] : "https://www.flipkart.com" + href.split("?")[0];
+            return { name, price: salePrice, url, imageUrl: imgSrc, rating, reviewCount: null };
           }
           return null;
         }, product.minPrice);
@@ -108,12 +133,12 @@ export async function scrapeFlipkart(): Promise<NormalizedProduct[]> {
             inStock: true,
           });
         }
-      } catch {
-        // skip failed query
+      } catch (err) {
+        console.error(`Flipkart error for ${product.fkQuery}:`, err);
       } finally {
         await page.close();
       }
-      await new Promise((r) => setTimeout(r, 1500));
+      await new Promise((r) => setTimeout(r, 1000));
     }
   } finally {
     await browser.close();

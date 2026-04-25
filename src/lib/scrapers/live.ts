@@ -89,7 +89,11 @@ async function liveVS(
     rating: item.rating_summary ? item.rating_summary / 20 : undefined,
     reviewCount: item.review_count || undefined,
     url: `https://www.vijaysales.com/${item.url_key}`,
-    imageUrl: item.image?.url || undefined,
+    imageUrl: item.image?.url
+      ? item.image.url.startsWith("http")
+        ? item.image.url
+        : `https://www.vijaysales.com${item.image.url}`
+      : undefined,
     inStock: true,
     extraData: item.mrp ? { mrp: item.mrp } : undefined,
   };
@@ -114,8 +118,12 @@ async function liveAmazon(
   const asins: string[] = [];
   for (const m of matches) {
     if (!seen.has(m[1])) { seen.add(m[1]); asins.push(m[1]); }
-    if (asins.length >= 6) break;
+    if (asins.length >= 10) break;
   }
+
+  // Extract model tokens from query to filter irrelevant ASINs early
+  const queryLower = query.toLowerCase();
+  const modelTokens = (queryLower.match(/[a-z]*\d+[a-z0-9]*/g) ?? []).filter((t) => t.length >= 2);
 
   for (const asin of asins) {
     await new Promise((r) => setTimeout(r, 400));
@@ -128,13 +136,22 @@ async function liveAmazon(
     const price = priceStr ? parseFloat(priceStr) : null;
     if (!title || !price || price < minPrice) continue;
 
+    // Skip ASIN if title doesn't contain at least one model token from the query
+    if (modelTokens.length > 0) {
+      const titleLower = title.toLowerCase();
+      if (!modelTokens.some((t) => titleLower.includes(t))) continue;
+    }
+
     const ratingStr = pHtml.match(/([0-9.]+) out of 5 stars/)?.[1];
     const reviewStr = pHtml.match(/([0-9,]+) ratings/)?.[1]?.replace(/,/g, "");
     const imageUrl = pHtml.match(/"large":"(https:\/\/m\.media-amazon\.com\/images\/[^"]+)"/)?.[1];
     const brandText = pHtml.match(/<a id="bylineInfo"[^>]*>([^<]+)/)?.[1]?.trim();
     const brand = brandText?.replace(/^Visit the /, "").replace(/ Store$/, "") ?? undefined;
     const cleanTitle = cleanProductName(title);
-    const inStock = !pHtml.includes("Currently unavailable") && !pHtml.includes("unavailableBlock");
+    // Check add-to-cart button presence (most reliable in-stock signal)
+    const inStock = pHtml.includes('id="add-to-cart-button"') ||
+      pHtml.includes('name="submit.add-to-cart"') ||
+      pHtml.includes('"availability":"https://schema.org/InStock"');
 
     return {
       name: cleanTitle,
@@ -181,39 +198,75 @@ async function liveFlipkart(
   try {
     const page = await ctx.newPage();
     await page.goto(`https://www.flipkart.com/search?q=${encodeURIComponent(query)}&sort=popularity`, {
-      waitUntil: "networkidle",
-      timeout: 20000,
+      waitUntil: "domcontentloaded",
+      timeout: 25000,
     });
+    // Give JS time to render (CSS class selectors are unreliable; FK changes them)
+    await page.waitForTimeout(3000);
 
+    // page.evaluate must not contain named function declarations —
+    // tsx/esbuild injects __name() helpers that break in the browser sandbox.
+    // page.evaluate must use only inline code — tsx/esbuild injects __name()
+    // into named function declarations which breaks in the browser sandbox.
     const found = await page.evaluate((minP: number) => {
-      const priceEls = document.querySelectorAll(".hZ3P6w, .Nx9bqj, ._30jeq3");
+      const priceEls = Array.from(document.querySelectorAll("div, span")).filter((el) => {
+        if (el.children.length > 0) return false;
+        return /^₹[\d,]+$/.test((el as HTMLElement).innerText?.trim() || "");
+      });
+
       for (const priceEl of priceEls) {
-        let el: Element | null = priceEl.parentElement;
-        for (let i = 0; i < 10 && el; i++) {
-          const link = el.querySelector<HTMLAnchorElement>("a[href*='/p/']");
-          const img = el.querySelector<HTMLImageElement>("img");
-          if (link && img) {
-            const price = parseInt(priceEl.textContent?.replace(/[^0-9]/g, "") || "0");
-            if (price < minP) break;
-            const textEls = el.querySelectorAll("a, div, span");
-            let longestText = "";
-            textEls.forEach((te) => {
-              if (te.children.length === 0) {
-                const t = (te as HTMLElement).innerText?.trim() || "";
-                if (t.length > longestText.length && t.length < 200 && !t.includes("₹") && !t.includes("Rating")) longestText = t;
-              }
-            });
-            const ratingEl = el.querySelector<HTMLElement>(".XQDdHH, ._3LWZlK, .WkcPbg");
-            return {
-              name: longestText,
-              price,
-              url: "https://www.flipkart.com" + link.getAttribute("href")!.split("?")[0],
-              imageUrl: img.getAttribute("src") || "",
-              rating: ratingEl?.innerText ? parseFloat(ratingEl.innerText) : null,
-            };
-          }
-          el = el.parentElement;
+        const price = parseInt((priceEl as HTMLElement).innerText.replace(/[^0-9]/g, ""));
+        if (price < minP || price > 1000000) continue;
+
+        // Walk up to find a card container with BOTH a product link AND an img.
+        // Flipkart sometimes wraps only the price in <a>, with image/title outside.
+        let container: Element | null = priceEl.parentElement;
+        let link: HTMLAnchorElement | null = null;
+        let img: HTMLImageElement | null = null;
+        for (let s = 0; container && container !== document.body && s < 15; s++) {
+          link = container.querySelector<HTMLAnchorElement>("a[href*='/p/']");
+          img = container.querySelector<HTMLImageElement>("img");
+          if (link && img) break;
+          container = container.parentElement;
         }
+        if (!link || !img || !container) continue;
+
+        // Within the card, pick the LOWEST price >= minP to get sale price, not MRP.
+        let salePrice = price;
+        for (const pe of Array.from(container.querySelectorAll("div, span"))) {
+          if (pe.children.length > 0) continue;
+          const t = (pe as HTMLElement).innerText?.trim() || "";
+          if (!/^₹[\d,]+$/.test(t)) continue;
+          const p = parseInt(t.replace(/[^0-9]/g, ""));
+          if (p >= minP && p < salePrice) salePrice = p;
+        }
+
+        const imgSrc = img.getAttribute("src") || img.getAttribute("data-src") || "";
+        let name = "";
+        container.querySelectorAll("div, span, a").forEach((te) => {
+          if (te.children.length === 0) {
+            const t = (te as HTMLElement).innerText?.trim() || "";
+            if (
+              t.length > name.length && t.length > 10 && t.length < 300 &&
+              !t.includes("₹") && !t.includes("%") &&
+              !/^\d+(\.\d+)?$/.test(t) &&
+              !t.toLowerCase().includes("offer")
+            ) name = t;
+          }
+        });
+        if (!name) continue;
+
+        let rating: number | null = null;
+        for (const le of Array.from(container.querySelectorAll("div, span"))) {
+          if (le.children.length > 0) continue;
+          const t = (le as HTMLElement).innerText?.trim() || "";
+          const r = parseFloat(t);
+          if (r >= 1 && r <= 5 && /^\d\.\d$/.test(t)) { rating = r; break; }
+        }
+
+        const href = link.getAttribute("href") || "";
+        const url = href.startsWith("http") ? href.split("?")[0] : "https://www.flipkart.com" + href.split("?")[0];
+        return { name, price: salePrice, url, imageUrl: imgSrc, rating };
       }
       return null;
     }, minPrice);
@@ -248,6 +301,17 @@ export interface LiveSearchResult {
   category: string;
 }
 
+// Reject a scraper result that doesn't match the query's model identifiers.
+// e.g. searching "T500 Pro" must not accept "Air 7 Pro" from VS.
+function isRelevantMatch(productName: string, query: string): boolean {
+  const nameLower = productName.toLowerCase();
+  const queryLower = query.toLowerCase();
+  // Extract alphanumeric model tokens from query (e.g. "t500", "128gb", "wh1000xm5", "15")
+  const modelTokens = (queryLower.match(/[a-z]*\d+[a-z0-9]*/g) ?? []).filter((t) => t.length >= 2);
+  if (modelTokens.length === 0) return true; // query has no model numbers; can't filter
+  return modelTokens.some((t) => nameLower.includes(t));
+}
+
 export async function liveSearch(query: string): Promise<LiveSearchResult> {
   const { category, minPrice } = detectCategory(query);
   const canonicalSlug = slugify(query);
@@ -264,7 +328,9 @@ export async function liveSearch(query: string): Promise<LiveSearchResult> {
     vsResult.status === "fulfilled" ? vsResult.value : null,
     amzResult.status === "fulfilled" ? amzResult.value : null,
     fkResult,
-  ].filter((p): p is NormalizedProduct => p != null);
+  ]
+    .filter((p): p is NormalizedProduct => p != null)
+    .filter((p) => isRelevantMatch(p.name, query));
 
   return { products, canonicalSlug, category };
 }

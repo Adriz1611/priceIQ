@@ -3,15 +3,15 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
-      // Vijay Sales
-      { protocol: "https", hostname: "vsprod.vijaysales.com" },
-      { protocol: "https", hostname: "www.vijaysales.com" },
+      // Vijay Sales (all subdomains)
+      { protocol: "https", hostname: "**.vijaysales.com" },
+      { protocol: "https", hostname: "vijaysales.com" },
       // Amazon.in
       { protocol: "https", hostname: "m.media-amazon.com" },
       { protocol: "https", hostname: "images-amazon.com" },
-      // Flipkart
-      { protocol: "https", hostname: "rukminim2.flixcart.com" },
-      { protocol: "https", hostname: "rukminim1.flixcart.com" },
+      { protocol: "https", hostname: "**.media-amazon.com" },
+      // Flipkart CDN
+      { protocol: "https", hostname: "**.flixcart.com" },
     ],
   },
 };

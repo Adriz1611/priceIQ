@@ -1,4 +1,4 @@
-import { CheckCircle, ExternalLink, XCircle, Star, Trophy } from "lucide-react";
+import { CheckCircle, XCircle, Star, Trophy } from "lucide-react";
 
 interface Listing {
   id: string;
@@ -139,16 +139,6 @@ export function PriceComparisonTable({ listings }: PriceComparisonTableProps) {
                     </span>
                   )}
 
-                  {listing.url && listing.inStock && (
-                    <a
-                      href={listing.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                    >
-                      Buy <ExternalLink className="h-3 w-3" />
-                    </a>
-                  )}
                 </div>
               </div>
             </div>

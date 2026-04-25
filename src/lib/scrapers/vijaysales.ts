@@ -72,7 +72,11 @@ export async function scrapeVijaySales(): Promise<NormalizedProduct[]> {
         rating: item.rating_summary ? item.rating_summary / 20 : undefined,
         reviewCount: item.review_count || undefined,
         url: `https://www.vijaysales.com/${item.url_key}`,
-        imageUrl: item.image?.url || undefined,
+        imageUrl: item.image?.url
+          ? item.image.url.startsWith("http")
+            ? item.image.url
+            : `https://www.vijaysales.com${item.image.url}`
+          : undefined,
         inStock: true,
         extraData: item.mrp ? { mrp: item.mrp } : undefined,
       });

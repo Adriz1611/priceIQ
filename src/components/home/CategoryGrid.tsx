@@ -71,7 +71,7 @@ export async function CategoryGrid() {
           </Link>
 
           {/* Remaining categories — 2-col sub-grid */}
-          <div className="col-span-1 lg:col-span-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3">
+          <div className="col-span-1 lg:col-span-2 grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 gap-3">
             {rest.map(({ category, _count }) => {
               const meta = CATEGORY_META[category] ?? { emoji: "📦", iconClass: "bg-secondary text-foreground" };
               return (
