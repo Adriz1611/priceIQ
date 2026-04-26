@@ -1,0 +1,906 @@
+% ============================================================
+%  PriceIQ — Software Requirements Specification
+%  BTech Final Year Project, 2025-2026
+% ============================================================
+\documentclass[12pt,a4paper]{report}
+
+\usepackage[top=1in,bottom=1in,left=1.2in,right=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{mdframed}
+
+\definecolor{priblue}{RGB}{0,82,165}
+\definecolor{rowgray}{RGB}{245,245,245}
+\definecolor{headerblue}{RGB}{220,235,255}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textit{PriceIQ --- Software Requirements Specification v1.0}}
+\fancyhead[R]{\small\textit{BTech Final Year Project 2025--2026}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\setlength{\parskip}{6pt}
+\setlength{\parindent}{0pt}
+\onehalfspacing
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+% Requirement box
+\newmdenv[linecolor=priblue,backgroundcolor=headerblue!30,
+          linewidth=1pt,leftmargin=0,rightmargin=0,
+          skipabove=6pt,skipbelow=6pt]{reqbox}
+
+\begin{document}
+
+% ─── TITLE PAGE ─────────────────────────────────────────────────────────────
+\begin{titlepage}
+  \centering
+  \vspace*{1.8cm}
+  {\Huge\bfseries\color{priblue} PriceIQ\par}
+  \vspace{0.4cm}
+  {\large AI-Powered Electronics Price Comparison for Indian Consumers\par}
+  \vspace{1.4cm}
+  \rule{0.85\linewidth}{1.5pt}\\[0.5cm]
+  {\LARGE\bfseries Software Requirements Specification (SRS)\par}
+  \vspace{0.3cm}
+  {\large Document Version 1.0\par}
+  \rule{0.85\linewidth}{1.5pt}
+  \vspace{1.8cm}
+
+  \begin{tabular}{@{}ll@{}}
+    \textbf{Project Type:}   & BTech Final Year Project \\[4pt]
+    \textbf{Department:}     & Computer Science and Engineering \\[4pt]
+    \textbf{Academic Year:}  & 2025--2026 \\[4pt]
+    \textbf{Prepared By:}    & Adrij Bhadra \\[4pt]
+    \textbf{Date:}           & April 2026 \\[4pt]
+    \textbf{Document Status:}& Final \\
+  \end{tabular}
+
+  \vfill
+  {\small This document is prepared for academic evaluation only.\\
+  PriceIQ is an independently developed final-year academic project.}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ─── CHAPTER 1: INTRODUCTION ─────────────────────────────────────────────────
+\chapter{Introduction}
+
+\section{Purpose}
+This Software Requirements Specification (SRS) document formally describes the
+functional and non-functional requirements for \textbf{PriceIQ}, an AI-powered
+electronics price comparison platform designed for Indian consumers. The document
+is intended for the following audiences:
+
+\begin{itemize}[noitemsep]
+  \item Academic evaluators and examiners assessing the BTech final-year project.
+  \item The developer(s) implementing and maintaining the system.
+  \item Any future contributors who extend the platform.
+\end{itemize}
+
+This SRS is the authoritative reference for what the system \emph{must} do, how
+it must behave, and the constraints under which it operates. It does not describe
+implementation details, which are covered in the System Design Document.
+
+\section{Scope}
+PriceIQ is a web-based application that allows users to search for consumer
+electronics and compare real-time prices from three major Indian online retailers:
+Amazon India (\texttt{amazon.in}), Flipkart (\texttt{flipkart.com}), and Vijay
+Sales (\texttt{vijaysales.com}). The system additionally generates AI-driven
+purchase recommendations using the Groq LLaMA-3 large language model.
+
+The application is scoped to the Indian market (prices in Indian Rupees, INR),
+and covers the following product categories: Smartphones, Laptops, Headphones,
+Televisions, Tablets, Cameras, and Wearables.
+
+\textbf{In scope:}
+\begin{itemize}[noitemsep]
+  \item User search and live scraping across three platforms.
+  \item Price comparison display with source-level detail.
+  \item Price history tracking across scrape cycles.
+  \item AI-generated product summary and purchase recommendation.
+  \item Batch scraping of a curated product catalogue.
+  \item Administrative dashboard with KPI metrics.
+\end{itemize}
+
+\textbf{Out of scope:}
+\begin{itemize}[noitemsep]
+  \item E-commerce transaction or cart functionality.
+  \item User account management or personalisation.
+  \item Price alert notifications or email/SMS delivery.
+  \item Support for non-Indian retailers or non-INR currencies.
+  \item Mobile (iOS/Android) native applications.
+\end{itemize}
+
+\section{Definitions, Acronyms, and Abbreviations}
+
+\begin{longtable}{L{2.8cm} L{10cm}}
+  \toprule
+  \textbf{Term} & \textbf{Definition} \\
+  \midrule
+  \endhead
+  PriceIQ & The name of the system being specified. \\
+  SRS & Software Requirements Specification. \\
+  API & Application Programming Interface. \\
+  LLM & Large Language Model. \\
+  Groq & A hardware-accelerated AI inference provider; used to run LLaMA-3. \\
+  LLaMA-3 & Open-weight large language model developed by Meta. \\
+  ORM & Object-Relational Mapper; specifically Prisma 7 in this project. \\
+  SSR & Server-Side Rendering (Next.js feature). \\
+  ASIN & Amazon Standard Identification Number, a unique product identifier on Amazon. \\
+  Playwright & A browser automation library used to scrape Flipkart. \\
+  Slug & A URL-safe lowercase string uniquely identifying a product, e.g., \texttt{iphone-15-128gb}. \\
+  INR & Indian Rupee, the currency used throughout the system. \\
+  FR & Functional Requirement. \\
+  NFR & Non-Functional Requirement. \\
+  MRP & Maximum Retail Price, the government-mandated ceiling price on Indian goods. \\
+  \bottomrule
+\end{longtable}
+
+\section{Overview of Document}
+The remainder of this document is organised as follows:
+
+\begin{itemize}[noitemsep]
+  \item \textbf{Chapter 2} provides an overall description of the product,
+        including product perspective, key functions, user classes, and
+        operating environment.
+  \item \textbf{Chapter 3} specifies all functional requirements, grouped
+        into ten major feature areas with detailed use-case descriptions.
+  \item \textbf{Chapter 4} defines non-functional requirements covering
+        performance, reliability, security, usability, and maintainability.
+  \item \textbf{Chapter 5} describes external interface requirements including
+        the user interface, third-party API interfaces, and communication
+        protocols.
+  \item \textbf{Chapter 6} presents the system's data model and persistence
+        requirements.
+  \item \textbf{Chapter 7} lists assumptions, dependencies, and known
+        constraints.
+\end{itemize}
+
+% ─── CHAPTER 2: OVERALL DESCRIPTION ─────────────────────────────────────────
+\chapter{Overall Description}
+
+\section{Product Perspective}
+PriceIQ is a standalone web application operating in a client-server model. It
+is not a sub-system of any larger platform; however, it depends on three external
+data sources (Amazon India, Flipkart, Vijay Sales) and one external AI inference
+service (Groq API) to deliver its core value.
+
+The system fills a gap in the Indian consumer market: existing price-comparison
+services (e.g., BuyHatke, PriceDekho) do not provide AI-generated analysis
+tailored to Indian buying priorities such as warranty support, seller trust,
+and delivery speed. PriceIQ combines real-time scraping with LLM inference to
+address this gap.
+
+\begin{figure}[h]
+\centering
+\textit{(Refer to the System Design Document for the full architecture diagram.)}
+\end{figure}
+
+\section{Product Functions}
+The major functions provided by PriceIQ are summarised below:
+
+\begin{enumerate}[noitemsep]
+  \item \textbf{Live Search:} On receiving a user query, the system concurrently
+        scrapes Amazon India, Flipkart, and Vijay Sales and returns normalised
+        price data.
+  \item \textbf{Product Identity Matching:} A scoring engine parses the query
+        into brand, model, storage, and variant tokens and scores each retailer
+        candidate to prevent wrong-variant or accessory listings.
+  \item \textbf{Price Comparison:} Aggregated listings are displayed in a
+        structured comparison table showing price, rating, stock status, and
+        a ``best deal'' highlight.
+  \item \textbf{AI Recommendation:} The Groq LLaMA-3 model analyses the
+        available listings and generates a concise purchase recommendation
+        tailored to Indian consumers.
+  \item \textbf{Price History:} Every scrape cycle appends a timestamped price
+        record, enabling users to observe trends via a line chart.
+  \item \textbf{Batch Scraping:} An administrative endpoint runs a full scrape
+        of a curated product catalogue and populates the database.
+  \item \textbf{Search:} Users can query the product database with text search
+        and apply category, source, and sort filters.
+  \item \textbf{Dashboard:} Administrators can view system KPIs including total
+        products, listing counts by source, recent searches, and
+        category distribution.
+\end{enumerate}
+
+\section{User Classes and Characteristics}
+
+\begin{longtable}{L{2.5cm} L{3cm} L{7cm}}
+  \toprule
+  \textbf{User Class} & \textbf{Frequency} & \textbf{Characteristics} \\
+  \midrule
+  \endhead
+  General Consumer &
+  High &
+  Indian consumer looking to compare prices before purchasing electronics.
+  Non-technical. Interacts via search bar and product page. \\[4pt]
+  Power User &
+  Medium &
+  Tech-savvy user who reads AI analysis, checks price history charts, and
+  uses category/sort filters. \\[4pt]
+  Administrator &
+  Low &
+  Developer or project maintainer who triggers batch scraping, monitors
+  the dashboard, and manages the product catalogue. \\
+  \bottomrule
+\end{longtable}
+
+\section{Operating Environment}
+The system operates in the following environment:
+
+\begin{itemize}[noitemsep]
+  \item \textbf{Server OS:} Linux (Docker container) or Windows 11 (development).
+  \item \textbf{Runtime:} Node.js 20+, Next.js 16 App Router.
+  \item \textbf{Database:} PostgreSQL 16 via Docker Compose.
+  \item \textbf{Browser:} Any modern Chromium, Firefox, or Safari-based browser
+        (desktop and mobile).
+  \item \textbf{Network:} Outbound HTTPS access to \texttt{amazon.in},
+        \texttt{flipkart.com}, \texttt{vsprod.vijaysales.com}, and
+        \texttt{api.groq.com}.
+\end{itemize}
+
+\section{Design and Implementation Constraints}
+\begin{itemize}[noitemsep]
+  \item The system must use Next.js 16 App Router architecture to comply with
+        the project's approved technology stack.
+  \item All monetary values are stored and displayed in INR only.
+  \item Flipkart scraping requires a headless Chromium browser (Playwright)
+        and cannot be replaced by a plain HTTP client due to the site's
+        bot-detection measures.
+  \item The Groq API key must be stored as an environment variable and never
+        committed to version control.
+  \item The database schema is managed by Prisma 7; the \texttt{DATABASE\_URL}
+        must be declared in \texttt{prisma.config.ts} (not \texttt{schema.prisma}).
+  \item The batch scrape endpoint must be protected by a shared secret
+        (\texttt{SCRAPE\_SECRET}) transmitted via the \texttt{x-scrape-secret}
+        HTTP header.
+\end{itemize}
+
+% ─── CHAPTER 3: FUNCTIONAL REQUIREMENTS ─────────────────────────────────────
+\chapter{Functional Requirements}
+
+Each requirement is given a unique identifier in the format \textbf{FR-NNN}.
+Priority levels: \textbf{M}~=~Must Have, \textbf{S}~=~Should Have,
+\textbf{C}~=~Could Have.
+
+% ── FR-001 Live Search ──
+\section{FR-001: Live Search}
+
+\begin{reqbox}
+\textbf{ID:} FR-001 \quad \textbf{Priority:} M \quad \textbf{Actor:} General Consumer
+\end{reqbox}
+
+\textbf{Description:} When a user submits a search query that returns no results
+from the local database, the system must automatically initiate a live search
+by concurrently scraping Amazon India, Flipkart, and Vijay Sales.
+
+\begin{longtable}{L{3cm} L{10cm}}
+  \toprule
+  \textbf{Field} & \textbf{Detail} \\
+  \midrule
+  \endhead
+  Pre-conditions & Application is running; user has entered a non-empty search
+                   query; no matching product exists in the database. \\[3pt]
+  Main Flow &
+    1. User submits query via the search bar. \newline
+    2. System queries the database; result count is zero. \newline
+    3. \texttt{LiveSearchTrigger} component fires a POST to
+       \texttt{/api/search/live}. \newline
+    4. Server calls \texttt{liveSearch(query)}: Vijay Sales (GraphQL) and
+       Amazon (HTTP) are scraped in parallel; Flipkart (Playwright) runs
+       sequentially after. \newline
+    5. Each platform returns up to one \texttt{NormalizedProduct}. \newline
+    6. System upserts a canonical \texttt{Product} record and one
+       \texttt{ProductListing} per platform. \newline
+    7. A \texttt{PriceHistory} entry is recorded for each listing. \newline
+    8. System redirects the user to \texttt{/product/\{id\}}. \\[3pt]
+  Alternative Flow A &
+    Platform scrape fails (timeout, bot block): that platform is skipped;
+    remaining platforms' results are still returned. \\[3pt]
+  Alternative Flow B &
+    No platform returns an accepted candidate: system returns an error message
+    to the user suggesting they refine the query. \\[3pt]
+  Post-conditions & At least one \texttt{ProductListing} record is stored; user
+                    is shown the product comparison page. \\
+  \bottomrule
+\end{longtable}
+
+% ── FR-002 Product Identity Matching ──
+\section{FR-002: Product Identity Matching}
+
+\begin{reqbox}
+\textbf{ID:} FR-002 \quad \textbf{Priority:} M \quad \textbf{Actor:} System (internal)
+\end{reqbox}
+
+\textbf{Description:} The system must use a structured scoring engine to
+verify that a retailer-returned product title matches the user's search intent
+before storing or displaying the result.
+
+\begin{longtable}{L{3cm} L{10cm}}
+  \toprule
+  \textbf{Field} & \textbf{Detail} \\
+  \midrule
+  \endhead
+  Pre-conditions & A raw candidate product title and a parsed query object are
+                   available. \\[3pt]
+  Main Flow &
+    1. \texttt{parseQuery()} extracts brand, model tokens, storage token (e.g.,
+       128GB), and variant token (e.g., Ultra) from the query. \newline
+    2. \texttt{scoreCandidate()} evaluates the candidate title: \newline
+       \quad a) Hard-reject accessory keywords (case, cover, charger, etc.). \newline
+       \quad b) Hard-reject renewed/refurbished listings unless query requests
+              them. \newline
+       \quad c) Hard-reject if no model tokens match. \newline
+       \quad d) Hard-reject storage or variant conflicts. \newline
+       \quad e) Apply soft score bonuses for brand match (+30), model token
+              coverage (+40 max), storage match (+20), variant match (+20). \newline
+       \quad f) Apply soft penalties for combos, unexpected variants, missing
+              storage, missing brand. \newline
+    3. A candidate is accepted if score $\geq 40$ (when model tokens exist) or
+       score $\geq 20$ (vague query). \newline
+    4. The highest-scoring accepted candidate is selected; ties are broken by
+       review count. \\[3pt]
+  Post-conditions & Only products that semantically match the query are stored
+                    in the database. \\
+  \bottomrule
+\end{longtable}
+
+% ── FR-003 Price Comparison Display ──
+\section{FR-003: Price Comparison Display}
+
+\begin{reqbox}
+\textbf{ID:} FR-003 \quad \textbf{Priority:} M \quad \textbf{Actor:} General Consumer
+\end{reqbox}
+
+\textbf{Description:} The product detail page must display a structured
+comparison of all available platform listings for a product.
+
+\begin{longtable}{L{3cm} L{10cm}}
+  \toprule
+  \textbf{Field} & \textbf{Detail} \\
+  \midrule
+  \endhead
+  Pre-conditions & A product with at least one listing exists in the database. \\[3pt]
+  Main Flow &
+    1. User navigates to \texttt{/product/\{id\}}. \newline
+    2. System loads \texttt{Product} with all \texttt{ProductListing} records. \newline
+    3. Listings are sorted: in-stock first, then by ascending price. \newline
+    4. The cheapest in-stock listing is highlighted as ``Best Deal''. \newline
+    5. Price differences from the best deal are shown as percentage. \newline
+    6. Each listing shows: platform name, price (INR), star rating,
+       review count, MRP (Vijay Sales only), stock status, and an
+       outbound link. \\[3pt]
+  Alternative Flow &
+    A listing is out of stock: it is shown last with a grey ``Out of Stock'' badge. \\[3pt]
+  Post-conditions & User can see prices from all scraped platforms on one page. \\
+  \bottomrule
+\end{longtable}
+
+% ── FR-004 AI Purchase Recommendation ──
+\section{FR-004: AI Purchase Recommendation}
+
+\begin{reqbox}
+\textbf{ID:} FR-004 \quad \textbf{Priority:} M \quad \textbf{Actor:} General Consumer, System
+\end{reqbox}
+
+\textbf{Description:} The system must generate an AI-driven purchase
+recommendation for each product using the Groq LLaMA-3 inference API.
+
+\begin{longtable}{L{3cm} L{10cm}}
+  \toprule
+  \textbf{Field} & \textbf{Detail} \\
+  \midrule
+  \endhead
+  Pre-conditions & Product has at least one listing; Groq API key is configured. \\[3pt]
+  Main Flow &
+    1. After live search completes, server calls \texttt{analyzeProduct()} with
+       product name, category, domain, and all listings. \newline
+    2. Groq LLaMA-3.3-70b model receives a structured prompt requesting JSON
+       output with: \texttt{summary}, \texttt{recommendation},
+       \texttt{bestSource}, \texttt{confidenceNote}. \newline
+    3. Response is parsed; if JSON is malformed, a regex-based text fallback
+       extracts the fields. \newline
+    4. Result is stored in \texttt{AIAnalysis}; cached for 24~hours. \newline
+    5. User sees the analysis on the ``AI Analysis'' tab of the product page. \\[3pt]
+  Alternative Flow &
+    Groq API call fails: product is still saved; AI tab shows a ``Refresh''
+    button so the user can retry. \\[3pt]
+  Post-conditions & An \texttt{AIAnalysis} record is stored with a 24-hour TTL. \\
+  \bottomrule
+\end{longtable}
+
+% ── FR-005 Price History ──
+\section{FR-005: Price History Tracking}
+
+\begin{reqbox}
+\textbf{ID:} FR-005 \quad \textbf{Priority:} S \quad \textbf{Actor:} System, Power User
+\end{reqbox}
+
+\textbf{Description:} Every scrape event must append a timestamped price record
+to the \texttt{PriceHistory} table, enabling trend visualisation.
+
+\begin{longtable}{L{3cm} L{10cm}}
+  \toprule
+  \textbf{Field} & \textbf{Detail} \\
+  \midrule
+  \endhead
+  Pre-conditions & A scrape event (live or batch) has completed with at least
+                   one accepted listing. \\[3pt]
+  Main Flow &
+    1. For each accepted \texttt{NormalizedProduct}, system creates a
+       \texttt{PriceHistory} row with: \texttt{productId}, \texttt{source},
+       \texttt{price}, \texttt{recordedAt} (UTC timestamp). \newline
+    2. Rows are never updated or deleted (append-only). \newline
+    3. Product page renders a line chart via Recharts querying
+       \texttt{/api/price-history/\{id\}}. \\[3pt]
+  Post-conditions & Chart on product page reflects all historical price points. \\
+  \bottomrule
+\end{longtable}
+
+% ── FR-006 Batch Scrape ──
+\section{FR-006: Batch Scraping}
+
+\begin{reqbox}
+\textbf{ID:} FR-006 \quad \textbf{Priority:} M \quad \textbf{Actor:} Administrator
+\end{reqbox}
+
+\textbf{Description:} An authenticated HTTP endpoint must trigger a full scrape
+of the curated product catalogue (\texttt{products.ts}) across all three
+platforms.
+
+\begin{longtable}{L{3cm} L{10cm}}
+  \toprule
+  \textbf{Field} & \textbf{Detail} \\
+  \midrule
+  \endhead
+  Pre-conditions & Request includes a valid \texttt{x-scrape-secret} header. \\[3pt]
+  Main Flow &
+    1. POST to \texttt{/api/scrape} with header
+       \texttt{x-scrape-secret: <SCRAPE\_SECRET>}. \newline
+    2. Server validates the secret against \texttt{process.env.SCRAPE\_SECRET}. \newline
+    3. \texttt{runAllScrapers()} is called: iterates over 4 products $\times$ 3
+       sources. \newline
+    4. Results are grouped by canonical slug, upserted into \texttt{Product}
+       and \texttt{ProductListing}, and price history is recorded. \newline
+    5. JSON response returns the count of upserted records. \\[3pt]
+  Alternative Flow &
+    Missing or wrong secret: server responds 403 Forbidden immediately. \\[3pt]
+  Post-conditions & Database reflects latest prices for all catalogue products. \\
+  \bottomrule
+\end{longtable}
+
+% ── FR-007 Database Search ──
+\section{FR-007: Database Text Search and Filtering}
+
+\begin{reqbox}
+\textbf{ID:} FR-007 \quad \textbf{Priority:} M \quad \textbf{Actor:} General Consumer
+\end{reqbox}
+
+\textbf{Description:} The search results page must support full-text search of
+the product database with category filtering, source filtering, and multiple
+sort options.
+
+\begin{longtable}{L{3cm} L{10cm}}
+  \toprule
+  \textbf{Field} & \textbf{Detail} \\
+  \midrule
+  \endhead
+  Pre-conditions & Database contains at least one product. \\[3pt]
+  Main Flow &
+    1. User enters query in the search bar and optionally selects filters. \newline
+    2. GET \texttt{/api/search?q=\{query\}\&category=\{cat\}\&sort=\{sort\}} is issued. \newline
+    3. Database performs case-insensitive match on \texttt{name}, \texttt{brand},
+       \texttt{category}, and \texttt{description} fields. \newline
+    4. Optional filters: category (exact match), source (listing source). \newline
+    5. Sort options: price ascending/descending, rating, source count (default). \newline
+    6. Search query is logged to \texttt{SearchLog}. \newline
+    7. Results rendered as a grid of \texttt{ProductCard} components. \\[3pt]
+  Alternative Flow &
+    Zero results found: \texttt{LiveSearchTrigger} is shown (see FR-001). \\[3pt]
+  Post-conditions & Matching products displayed; query logged. \\
+  \bottomrule
+\end{longtable}
+
+% ── FR-008 Refresh Prices ──
+\section{FR-008: On-Demand Price Refresh}
+
+\begin{reqbox}
+\textbf{ID:} FR-008 \quad \textbf{Priority:} S \quad \textbf{Actor:} Power User
+\end{reqbox}
+
+\textbf{Description:} From the product detail page, a user must be able to
+trigger a re-scrape of all three platforms for the displayed product.
+
+\begin{longtable}{L{3cm} L{10cm}}
+  \toprule
+  \textbf{Field} & \textbf{Detail} \\
+  \midrule
+  \endhead
+  Pre-conditions & Product page is open with an existing product record. \\[3pt]
+  Main Flow &
+    1. User clicks ``Refresh Prices'' button. \newline
+    2. Frontend calls \texttt{/api/product/\{id\}/refresh}. \newline
+    3. Server re-runs \texttt{liveSearch()} with the product's canonical name. \newline
+    4. Updated listings are upserted; new price history rows are created. \newline
+    5. Page re-renders with updated data; toast notification confirms success. \\[3pt]
+  Post-conditions & Listings and price history updated; AI analysis cache invalidated. \\
+  \bottomrule
+\end{longtable}
+
+% ── FR-009 Dashboard ──
+\section{FR-009: Administrative Dashboard}
+
+\begin{reqbox}
+\textbf{ID:} FR-009 \quad \textbf{Priority:} S \quad \textbf{Actor:} Administrator
+\end{reqbox}
+
+\textbf{Description:} A dedicated dashboard page must display system-wide KPI
+metrics including product count, listing distribution by source, recent search
+activity, and category breakdown.
+
+\begin{longtable}{L{3cm} L{10cm}}
+  \toprule
+  \textbf{Field} & \textbf{Detail} \\
+  \midrule
+  \endhead
+  Pre-conditions & At least one product and one search log entry exist. \\[3pt]
+  Main Flow &
+    1. User navigates to \texttt{/dashboard}. \newline
+    2. Page calls \texttt{/api/dashboard} which aggregates: total products,
+       total listings per source, recent search queries, and category
+       distribution. \newline
+    3. KPI cards, a source distribution pie chart (Recharts), a category
+       bar chart, and a recent-searches table are rendered. \\[3pt]
+  Post-conditions & Administrator can assess system coverage at a glance. \\
+  \bottomrule
+\end{longtable}
+
+% ── FR-010 Dark Mode ──
+\section{FR-010: Dark Mode UI Theme}
+
+\begin{reqbox}
+\textbf{ID:} FR-010 \quad \textbf{Priority:} C \quad \textbf{Actor:} General Consumer
+\end{reqbox}
+
+\textbf{Description:} The application UI must support a dark colour theme that
+is applied by default and persists across sessions.
+
+\begin{longtable}{L{3cm} L{10cm}}
+  \toprule
+  \textbf{Field} & \textbf{Detail} \\
+  \midrule
+  \endhead
+  Pre-conditions & User accesses any page. \\[3pt]
+  Main Flow &
+    1. \texttt{ThemeProvider} (next-themes) initialises with theme = ``dark''. \newline
+    2. Theme is stored in \texttt{localStorage} and restored on subsequent visits. \newline
+    3. All Tailwind CSS and Radix UI components respond to the \texttt{dark:}
+       variant class. \\[3pt]
+  Post-conditions & UI renders in dark mode consistently across all pages. \\
+  \bottomrule
+\end{longtable}
+
+% ─── CHAPTER 4: NON-FUNCTIONAL REQUIREMENTS ──────────────────────────────────
+\chapter{Non-Functional Requirements}
+
+\section{Performance Requirements}
+
+\begin{longtable}{L{2cm} L{4cm} L{7cm}}
+  \toprule
+  \textbf{ID} & \textbf{Requirement} & \textbf{Metric / Acceptance Criterion} \\
+  \midrule
+  \endhead
+  NFR-P01 & Live search latency &
+    Total live search (all 3 platforms) must complete within \textbf{60 seconds}
+    under normal network conditions. Flipkart (Playwright) dominates latency. \\[3pt]
+  NFR-P02 & Cached search latency &
+    Database text search must return results within \textbf{500 ms} for a
+    product catalogue of up to 1\,000 products. \\[3pt]
+  NFR-P03 & Product page load &
+    SSR product page must reach Time-to-First-Byte within \textbf{2 seconds}
+    on a standard broadband connection. \\[3pt]
+  NFR-P04 & AI analysis latency &
+    Groq API call must complete within \textbf{8 seconds} at the model
+    \texttt{llama-3.3-70b-versatile} with a 450-token output limit. \\[3pt]
+  NFR-P05 & Concurrent users &
+    System must handle at least \textbf{5 concurrent live search requests}
+    without returning server errors, given the single-instance deployment model. \\
+  \bottomrule
+\end{longtable}
+
+\section{Reliability Requirements}
+
+\begin{longtable}{L{2cm} L{4cm} L{7cm}}
+  \toprule
+  \textbf{ID} & \textbf{Requirement} & \textbf{Metric / Acceptance Criterion} \\
+  \midrule
+  \endhead
+  NFR-R01 & Partial scrape failure &
+    If one or two platform scrapers fail, the remaining results must still be
+    saved and shown to the user (graceful degradation). \\[3pt]
+  NFR-R02 & AI failure isolation &
+    If the Groq API is unreachable, the product page must still render
+    price data; the AI tab shows a retry button. \\[3pt]
+  NFR-R03 & Database uptime &
+    The PostgreSQL instance (Docker) must recover automatically on container
+    restart. Data must survive container restarts via Docker volume. \\[3pt]
+  NFR-R04 & Bot detection handling &
+    If Amazon.in returns a 503 or CAPTCHA, the Amazon scraper must log a
+    warning and return null rather than throwing an unhandled exception. \\
+  \bottomrule
+\end{longtable}
+
+\section{Security Requirements}
+
+\begin{longtable}{L{2cm} L{4cm} L{7cm}}
+  \toprule
+  \textbf{ID} & \textbf{Requirement} & \textbf{Metric / Acceptance Criterion} \\
+  \midrule
+  \endhead
+  NFR-S01 & Scrape endpoint protection &
+    POST \texttt{/api/scrape} must reject any request whose
+    \texttt{x-scrape-secret} header does not match
+    \texttt{process.env.SCRAPE\_SECRET}. Response: 403 Forbidden. \\[3pt]
+  NFR-S02 & API key security &
+    \texttt{GROQ\_API\_KEY}, \texttt{DATABASE\_URL}, and \texttt{SCRAPE\_SECRET}
+    must be stored only in \texttt{.env.local} (or Docker environment variables)
+    and must never be embedded in client-side code. \\[3pt]
+  NFR-S03 & Input sanitisation &
+    Search query parameters must be passed to the Prisma ORM as parameterised
+    values, preventing SQL injection. \\[3pt]
+  NFR-S04 & No sensitive data in responses &
+    API responses must never expose environment variable values,
+    database connection strings, or internal stack traces to the client. \\
+  \bottomrule
+\end{longtable}
+
+\section{Usability Requirements}
+
+\begin{longtable}{L{2cm} L{4cm} L{7cm}}
+  \toprule
+  \textbf{ID} & \textbf{Requirement} & \textbf{Metric / Acceptance Criterion} \\
+  \midrule
+  \endhead
+  NFR-U01 & Mobile responsiveness &
+    All pages must be fully usable on a 375~px wide viewport (iPhone SE)
+    using Tailwind CSS responsive utilities. \\[3pt]
+  NFR-U02 & Loading feedback &
+    The \texttt{LiveSearchTrigger} component must display an animated
+    per-platform progress indicator while scraping is in progress. \\[3pt]
+  NFR-U03 & Error messaging &
+    All user-visible errors must be described in plain English with actionable
+    guidance (e.g., ``No results found. Try a more specific query.''). \\[3pt]
+  NFR-U04 & Accessibility &
+    All interactive controls must have visible focus states and ARIA labels
+    sufficient to pass basic keyboard navigation. \\
+  \bottomrule
+\end{longtable}
+
+\section{Maintainability Requirements}
+
+\begin{longtable}{L{2cm} L{4cm} L{7cm}}
+  \toprule
+  \textbf{ID} & \textbf{Requirement} & \textbf{Metric / Acceptance Criterion} \\
+  \midrule
+  \endhead
+  NFR-M01 & TypeScript strict mode &
+    All source files must compile with \texttt{strict: true} in
+    \texttt{tsconfig.json} without type errors. \\[3pt]
+  NFR-M02 & Scraper extensibility &
+    Adding a new retailer must require changes to at most three files:
+    a new scraper module, \texttt{index.ts}, and \texttt{live.ts}. The
+    \texttt{matcher.ts} scoring engine and \texttt{types.ts} interface must
+    not require modification. \\[3pt]
+  NFR-M03 & Product catalogue extension &
+    Adding a new product to the curated catalogue must require only adding
+    one entry to \texttt{products.ts}; no other code changes. \\
+  \bottomrule
+\end{longtable}
+
+% ─── CHAPTER 5: EXTERNAL INTERFACE REQUIREMENTS ──────────────────────────────
+\chapter{External Interface Requirements}
+
+\section{User Interface Requirements}
+\begin{itemize}[noitemsep]
+  \item The application must provide a single-page hero section on the home
+        route (\texttt{/}) with a prominently placed search bar.
+  \item The search bar must support auto-submission on Enter key press and
+        display search suggestions fetched from
+        \texttt{/api/search/suggestions}.
+  \item The product detail page (\texttt{/product/[id]}) must organise content
+        into two tabs: \emph{Price Comparison} and \emph{AI Analysis}.
+  \item All pages must include a persistent navigation bar with the PriceIQ
+        brand logo, a search field, and a link to the dashboard.
+  \item Toast notifications (Sonner library) must be used for scrape-trigger
+        and refresh-success feedback; no modal dialogs.
+\end{itemize}
+
+\section{Hardware Interfaces}
+The system has no direct hardware interface requirements beyond standard web
+server provisioning. The Playwright headless Chromium browser requires a minimum
+of 512~MB RAM per browser instance.
+
+\section{Software Interfaces}
+
+\begin{longtable}{L{3cm} L{3cm} L{7cm}}
+  \toprule
+  \textbf{Interface} & \textbf{Version} & \textbf{Description} \\
+  \midrule
+  \endhead
+  Groq API &
+  \texttt{groq-sdk} 1.1.2 &
+  REST-over-HTTPS chat completions API. Model: \texttt{llama-3.3-70b-versatile}.
+  Requires \texttt{GROQ\_API\_KEY} in environment. \\[3pt]
+  Vijay Sales GraphQL &
+  Internal &
+  GraphQL endpoint at \texttt{vsprod.vijaysales.com/graphql}. Publicly
+  accessible; no auth required. Requires a cache-bypass timestamp
+  parameter (\texttt{tp}). \\[3pt]
+  Amazon India &
+  Public HTML &
+  Standard HTTPS fetch of \texttt{amazon.in/s} (search) and
+  \texttt{amazon.in/dp/\{ASIN\}} (product page). Subject to bot-detection
+  blocking (503 responses). \\[3pt]
+  Flipkart &
+  Playwright DOM &
+  Headless Chromium navigates \texttt{flipkart.com/search}. Anti-detection
+  headers and navigator spoof required. \\[3pt]
+  Prisma ORM &
+  7.7.0 &
+  Prisma client with \texttt{@prisma/adapter-pg} (PostgreSQL adapter). \\[3pt]
+  PostgreSQL &
+  16 &
+  Relational database running in Docker. Accessed via connection string. \\[3pt]
+  Next.js &
+  16.2.4 &
+  Full-stack React framework. Provides API routes, SSR, and static assets. \\
+  \bottomrule
+\end{longtable}
+
+\section{Communication Interfaces}
+\begin{itemize}[noitemsep]
+  \item All client-server communication uses \textbf{HTTPS} (TLS 1.2+) in
+        production; HTTP is acceptable in local development only.
+  \item API routes follow \textbf{REST} conventions: POST for mutations,
+        GET for queries, standard HTTP status codes.
+  \item Scraper communication with external sites uses \textbf{HTTPS} only.
+  \item Groq API requests are authenticated via \textbf{Bearer token} in the
+        \texttt{Authorization} header.
+\end{itemize}
+
+% ─── CHAPTER 6: DATA REQUIREMENTS ────────────────────────────────────────────
+\chapter{Data Requirements}
+
+\section{Logical Data Model}
+The system persists data in five relational tables. Their logical relationships
+are described here; the physical schema diagram appears in the System Design
+Document.
+
+\begin{longtable}{L{3cm} L{10cm}}
+  \toprule
+  \textbf{Entity} & \textbf{Description} \\
+  \midrule
+  \endhead
+  \textbf{Product} &
+    Represents one canonical electronics product (e.g., ``Apple iPhone 15 128GB'').
+    Identified by a unique slug. One product can have multiple listings and
+    price history entries. \\[3pt]
+  \textbf{ProductListing} &
+    Represents the presence of a product on a specific retail platform
+    (Amazon, Flipkart, or Vijay Sales) with current price, rating, stock
+    status, and source URL. Unique per (productId, source) pair. \\[3pt]
+  \textbf{PriceHistory} &
+    An append-only record of price observations over time. One row per
+    (product, source, scrape event). Used to generate price-trend charts. \\[3pt]
+  \textbf{AIAnalysis} &
+    Stores the Groq LLM output for a product: summary, recommendation,
+    best-source name, and a confidence note. Refreshed every 24~hours. \\[3pt]
+  \textbf{SearchLog} &
+    Logs each user search query with a result count and timestamp.
+    Used to populate the dashboard ``Recent Searches'' table. \\
+  \bottomrule
+\end{longtable}
+
+\section{Data Retention and Integrity}
+\begin{itemize}[noitemsep]
+  \item \texttt{Product.slug} carries a \texttt{UNIQUE} constraint enforced
+        by the database; Prisma upsert operations use it as the conflict key.
+  \item \texttt{ProductListing} has a composite unique constraint on
+        \texttt{(productId, source)} ensuring at most one listing per source
+        per product.
+  \item \texttt{PriceHistory} rows are never updated or deleted; they form
+        an immutable audit trail.
+  \item \texttt{AIAnalysis} has no unique constraint; the application uses
+        \texttt{findFirst} followed by \texttt{update} or \texttt{create} to
+        manage at most one active analysis per product.
+  \item \texttt{SearchLog} is retained indefinitely for analytics; no
+        PII is stored (no user IDs or IP addresses).
+  \item All timestamps are stored in UTC and displayed in the user's local
+        time zone via JavaScript's \texttt{Intl} API.
+\end{itemize}
+
+% ─── CHAPTER 7: CONSTRAINTS, ASSUMPTIONS, AND DEPENDENCIES ───────────────────
+\chapter{Constraints, Assumptions, and Dependencies}
+
+\section{Constraints}
+\begin{enumerate}[noitemsep]
+  \item \textbf{Amazon Bot Detection:} Amazon India returns HTTP 503 or 500
+        for programmatic fetch requests, regardless of User-Agent spoofing.
+        The Amazon scraper will silently return null in production and this
+        is a known limitation. Fixing this would require using the Amazon
+        Product Advertising API (requires seller account) or a rotating
+        proxy service (out of scope for this project).
+  \item \textbf{Flipkart Rate Limiting:} The Playwright scraper introduces a
+        significant latency overhead (25--45 seconds per product) due to
+        full browser initialisation and JavaScript rendering.
+  \item \textbf{Vijay Sales Catalogue:} Vijay Sales does not stock all
+        electronics models. Products unavailable in their catalogue return
+        null and are excluded from comparisons.
+  \item \textbf{LLM Token Limit:} The Groq API call is capped at 450 output
+        tokens; very long product descriptions may be truncated.
+  \item \textbf{Single-Region Scope:} All prices are in INR and reflect the
+        Indian market only. Currency conversion is outside scope.
+\end{enumerate}
+
+\section{Assumptions}
+\begin{enumerate}[noitemsep]
+  \item The developer has a valid Groq API key with sufficient quota for the
+        expected usage (~50 analysis requests per day).
+  \item Docker and Docker Compose are installed on the deployment host.
+  \item The host machine has at least 4~GB RAM to run PostgreSQL, Next.js,
+        and a Playwright Chromium instance concurrently.
+  \item The \texttt{.env.local} file is populated with \texttt{DATABASE\_URL},
+        \texttt{GROQ\_API\_KEY}, and \texttt{SCRAPE\_SECRET} before running
+        the application.
+  \item Vijay Sales and Flipkart do not significantly change their DOM or
+        API structure during the project evaluation period.
+\end{enumerate}
+
+\section{Dependencies}
+\begin{longtable}{L{3.5cm} L{2cm} L{7.5cm}}
+  \toprule
+  \textbf{Dependency} & \textbf{Version} & \textbf{Purpose} \\
+  \midrule
+  \endhead
+  Next.js & 16.2.4 & Full-stack React framework \\
+  React & 19.2.4 & UI rendering library \\
+  Prisma & 7.7.0 & Database ORM \\
+  \texttt{@prisma/adapter-pg} & 7.7.0 & PostgreSQL driver adapter for Prisma 7 \\
+  Playwright & 1.59.1 & Headless browser for Flipkart scraping \\
+  \texttt{groq-sdk} & 1.1.2 & Groq LLM API client \\
+  TailwindCSS & 4 & Utility-first CSS framework \\
+  Recharts & 3.8.1 & Chart components for price history visualisation \\
+  Radix UI & various & Accessible headless UI primitives \\
+  Sonner & latest & Toast notification library \\
+  next-themes & latest & Dark mode theme management \\
+  Docker / Compose & 24+ / 2.x & Container runtime for PostgreSQL \\
+  \bottomrule
+\end{longtable}
+
+\chapter*{Revision History}
+\begin{longtable}{C{1.5cm} C{2cm} L{4cm} L{5cm}}
+  \toprule
+  \textbf{Version} & \textbf{Date} & \textbf{Author} & \textbf{Changes} \\
+  \midrule
+  \endhead
+  1.0 & April 2026 & Adrij Bhadra &
+    Initial release. Covers all 10 functional requirements,
+    NFRs, external interfaces, data model, and constraints. \\
+  \bottomrule
+\end{longtable}
+
+\end{document}

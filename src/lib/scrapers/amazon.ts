@@ -1,5 +1,6 @@
 import { PRODUCTS } from "./products";
 import type { NormalizedProduct, SourceName } from "./types";
+import { parseQuery, scoreCandidate } from "./matcher";
 
 const HEADERS = {
   "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -38,7 +39,7 @@ async function fetchAsins(query: string): Promise<string[]> {
       seen.add(m[1]);
       asins.push(m[1]);
     }
-    if (asins.length >= 6) break;
+    if (asins.length >= 10) break;
   }
   return asins;
 }
@@ -50,9 +51,9 @@ async function fetchProductPage(asin: string): Promise<{
   reviewCount: number | null;
   imageUrl: string | null;
   brand: string | null;
+  inStock: boolean;
 } | null> {
-  const url = `https://www.amazon.in/dp/${asin}`;
-  const res = await fetch(url, { headers: HEADERS });
+  const res = await fetch(`https://www.amazon.in/dp/${asin}`, { headers: HEADERS });
   if (!res.ok) return null;
   const html = await res.text();
 
@@ -66,8 +67,12 @@ async function fetchProductPage(asin: string): Promise<{
   const imageUrl = html.match(/"large":"(https:\/\/m\.media-amazon\.com\/images\/[^"]+)"/)?.[1] ?? null;
   const brandText = html.match(/<a id="bylineInfo"[^>]*>([^<]+)/)?.[1]?.trim() ?? null;
   const brand = brandText?.replace(/^Visit the /, "").replace(/ Store$/, "") ?? null;
+  const inStock =
+    html.includes('id="add-to-cart-button"') ||
+    html.includes('name="submit.add-to-cart"') ||
+    html.includes('"availability":"https://schema.org/InStock"');
 
-  return { title, price, rating, reviewCount, imageUrl, brand };
+  return { title, price, rating, reviewCount, imageUrl, brand, inStock };
 }
 
 export async function scrapeAmazon(): Promise<NormalizedProduct[]> {
@@ -78,41 +83,50 @@ export async function scrapeAmazon(): Promise<NormalizedProduct[]> {
       const asins = await fetchAsins(product.amzQuery);
       if (!asins.length) continue;
 
-      let matched: Awaited<ReturnType<typeof fetchProductPage>> = null;
-      let matchedAsin = "";
+      const parsedQ = parseQuery(product.amzQuery, product.category, product.minPrice);
+
+      let bestScore = -Infinity;
+      let bestPage: Awaited<ReturnType<typeof fetchProductPage>> = null;
+      let bestAsin = "";
 
       for (const asin of asins) {
         await new Promise((r) => setTimeout(r, 600));
         const p = await fetchProductPage(asin);
-        if (p?.title && p.price != null && p.price >= product.minPrice) {
-          matched = p;
-          matchedAsin = asin;
-          break;
+        if (!p?.title || !p.price || p.price < product.minPrice) continue;
+
+        const match = scoreCandidate(p.title, parsedQ);
+        console.log(`AMZ [${product.slug}] "${p.title.slice(0, 60)}" → score=${match.score} (${match.reasons.join(", ")})`);
+
+        if (match.accepted && match.score > bestScore) {
+          bestScore = match.score;
+          bestPage = p;
+          bestAsin = asin;
         }
       }
 
-      if (!matched?.title) continue;
+      if (!bestPage?.title) {
+        console.warn(`Amazon: no accepted candidate for "${product.amzQuery}" (checked ${asins.length} ASINs)`);
+        continue;
+      }
 
       results.push({
-        name: cleanName(matched.title),
+        name: cleanName(bestPage.title),
         slug: `amz-${product.slug}`,
         category: product.category,
         domain: "electronics",
-        brand: matched.brand
-          ? extractBrand(matched.brand)
-          : extractBrand(matched.title),
+        brand: bestPage.brand ? extractBrand(bestPage.brand) : extractBrand(bestPage.title),
         source: "amazon" as SourceName,
-        sourceId: matchedAsin,
-        price: matched.price ?? undefined,
+        sourceId: bestAsin,
+        price: bestPage.price ?? undefined,
         currency: "INR",
-        rating: matched.rating ?? undefined,
-        reviewCount: matched.reviewCount ?? undefined,
-        url: `https://www.amazon.in/dp/${matchedAsin}`,
-        imageUrl: matched.imageUrl ?? undefined,
-        inStock: true,
+        rating: bestPage.rating ?? undefined,
+        reviewCount: bestPage.reviewCount ?? undefined,
+        url: `https://www.amazon.in/dp/${bestAsin}`,
+        imageUrl: bestPage.imageUrl ?? undefined,
+        inStock: bestPage.inStock,
       });
-    } catch {
-      // skip failed query
+    } catch (err) {
+      console.error(`Amazon error for "${product.amzQuery}":`, err);
     }
     await new Promise((r) => setTimeout(r, 800));
   }

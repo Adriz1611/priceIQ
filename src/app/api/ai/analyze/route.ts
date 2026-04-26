@@ -3,7 +3,14 @@ import { prisma } from "@/lib/db";
 import { analyzeProduct, generateProductSummary } from "@/lib/ai/groq";
 
 export async function POST(req: NextRequest) {
-  const { productId } = await req.json();
+  let productId: string;
+  try {
+    const body = await req.json() as { productId?: string };
+    productId = body?.productId ?? "";
+  } catch {
+    return NextResponse.json({ success: false, error: "Invalid JSON body" }, { status: 400 });
+  }
+
   if (!productId) {
     return NextResponse.json({ success: false, error: "productId required" }, { status: 400 });
   }

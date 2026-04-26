@@ -4,12 +4,28 @@ import { liveSearch } from "@/lib/scrapers/live";
 import { analyzeProduct, generateProductSummary } from "@/lib/ai/groq";
 
 export async function POST(req: NextRequest) {
-  const { query } = await req.json() as { query: string };
-  if (!query?.trim()) {
+  let query: string;
+  try {
+    const body = await req.json() as { query?: string };
+    query = body?.query ?? "";
+  } catch {
+    return NextResponse.json({ success: false, error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  if (!query.trim()) {
     return NextResponse.json({ success: false, error: "query required" }, { status: 400 });
   }
 
-  const { products, canonicalSlug, category } = await liveSearch(query.trim());
+  let products: Awaited<ReturnType<typeof liveSearch>>["products"];
+  let canonicalSlug: string;
+  let category: string;
+  try {
+    ({ products, canonicalSlug, category } = await liveSearch(query.trim()));
+  } catch (err) {
+    console.error("liveSearch error:", err);
+    return NextResponse.json({ success: false, error: "Search failed" }, { status: 502 });
+  }
+
   if (!products.length) {
     return NextResponse.json({ success: false, error: "No products found" }, { status: 404 });
   }

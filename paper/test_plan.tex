@@ -1,0 +1,1177 @@
+% ============================================================
+%  PriceIQ — Test Plan and Test Cases
+%  BTech Final Year Project, 2025-2026
+% ============================================================
+\documentclass[12pt,a4paper]{report}
+
+\usepackage[top=1in,bottom=1in,left=1.2in,right=1in]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{parskip}
+\usepackage{setspace}
+\usepackage{mdframed}
+\usepackage{colortbl}
+
+\definecolor{priblue}{RGB}{0,82,165}
+\definecolor{lightblue}{RGB}{210,230,255}
+\definecolor{passgreen}{RGB}{0,140,0}
+\definecolor{failred}{RGB}{180,0,0}
+\definecolor{pendyellow}{RGB}{200,140,0}
+\definecolor{rowgray}{RGB}{248,248,248}
+\definecolor{headerblue}{RGB}{220,235,255}
+\definecolor{unitcol}{RGB}{220,240,255}
+\definecolor{intcol}{RGB}{220,255,225}
+\definecolor{syscol}{RGB}{255,245,210}
+\definecolor{perfcol}{RGB}{255,225,225}
+\definecolor{seccol}{RGB}{240,220,255}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textit{PriceIQ --- Test Plan v1.0}}
+\fancyhead[R]{\small\textit{BTech Final Year Project 2025--2026}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\setlength{\parskip}{6pt}
+\setlength{\parindent}{0pt}
+\onehalfspacing
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+\newmdenv[linecolor=priblue,backgroundcolor=lightblue!40,
+          linewidth=1pt,skipabove=6pt,skipbelow=6pt]{notebox}
+
+% Status colours
+\newcommand{\PASS}{\textcolor{passgreen}{\textbf{PASS}}}
+\newcommand{\FAIL}{\textcolor{failred}{\textbf{FAIL}}}
+\newcommand{\PEND}{\textcolor{pendyellow}{\textbf{PLANNED}}}
+
+\begin{document}
+
+% ─── TITLE PAGE ─────────────────────────────────────────────────────────────
+\begin{titlepage}
+  \centering
+  \vspace*{1.8cm}
+  {\Huge\bfseries\color{priblue} PriceIQ\par}
+  \vspace{0.4cm}
+  {\large AI-Powered Electronics Price Comparison for Indian Consumers\par}
+  \vspace{1.4cm}
+  \rule{0.85\linewidth}{1.5pt}\\[0.5cm]
+  {\LARGE\bfseries Test Plan and Test Cases\par}
+  \vspace{0.3cm}
+  {\large Document Version 1.0\par}
+  \rule{0.85\linewidth}{1.5pt}
+  \vspace{1.8cm}
+
+  \begin{tabular}{@{}ll@{}}
+    \textbf{Project Type:}    & BTech Final Year Project \\[4pt]
+    \textbf{Department:}      & Computer Science and Engineering \\[4pt]
+    \textbf{Academic Year:}   & 2025--2026 \\[4pt]
+    \textbf{Prepared By:}     & Adrij Bhadra \\[4pt]
+    \textbf{Date:}            & April 2026 \\[4pt]
+    \textbf{Document Status:} & Final \\
+  \end{tabular}
+
+  \vfill
+  {\small Covers: Unit Tests, Integration Tests, System / End-to-End Tests,\\
+  Performance Tests, Security Tests, and Traceability Matrix.}
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+% ─── CHAPTER 1: INTRODUCTION ─────────────────────────────────────────────────
+\chapter{Introduction}
+
+\section{Purpose}
+This Test Plan defines the testing strategy, test environment, and test cases
+for the PriceIQ system. The document covers \textbf{56 test cases} across five
+testing categories: Unit, Integration, System / End-to-End, Performance, and
+Security. The primary goal is to verify that each functional requirement (FR)
+defined in the SRS is correctly implemented and that the system meets its
+non-functional requirements.
+
+\section{Scope}
+\textbf{In scope:}
+\begin{itemize}[noitemsep]
+  \item Unit tests for the \texttt{matcher.ts} scoring engine (pure functions).
+  \item Unit tests for utility functions in scraper modules.
+  \item Integration tests for all REST API endpoints.
+  \item System tests for key user workflows (search, compare, AI analysis).
+  \item Performance tests for response latency and load.
+  \item Security tests for the authenticated scrape endpoint and input handling.
+\end{itemize}
+
+\textbf{Out of scope:}
+\begin{itemize}[noitemsep]
+  \item End-to-end browser tests requiring Playwright against a live deployment.
+  \item Load tests simulating more than 10 concurrent users.
+  \item Testing of the Groq API itself (third-party service).
+\end{itemize}
+
+\section{Testing Approach and Status}
+\begin{notebox}
+The PriceIQ codebase does not yet include an automated test suite. This
+document specifies the full set of planned test cases, written from code
+analysis. All cases are marked \PEND{} (Planned); they would be executed
+using \textbf{Jest} (unit/integration) and \textbf{Playwright Test}
+(system/E2E) once a test harness is configured. The product matching engine
+(\texttt{matcher.ts}) uses pure functions with no I/O and is the highest
+priority for automated testing.
+
+TypeScript type correctness is enforced via the Next.js build pipeline
+(\texttt{next build}) since the project does not have a standalone
+\texttt{typescript} dev dependency; the build is confirmed green in the
+project history.
+\end{notebox}
+
+\section{References}
+\begin{itemize}[noitemsep]
+  \item PriceIQ Software Requirements Specification v1.0 (\texttt{srs.tex})
+  \item PriceIQ System Design Document v1.0 (\texttt{system\_design.tex})
+  \item Source files: \texttt{src/lib/scrapers/matcher.ts},
+        \texttt{src/lib/scrapers/live.ts},
+        \texttt{src/app/api/search/live/route.ts}
+\end{itemize}
+
+% ─── CHAPTER 2: TEST STRATEGY ────────────────────────────────────────────────
+\chapter{Test Strategy}
+
+\section{Testing Types}
+
+\begin{longtable}{L{2.5cm} L{3.5cm} L{7cm}}
+  \toprule
+  \textbf{Type} & \textbf{Tool} & \textbf{Description} \\
+  \midrule
+  \endhead
+  Unit Testing &
+    Jest + ts-jest &
+    Tests individual pure functions in \texttt{matcher.ts} and utility
+    modules in isolation. No network or database access. \\[3pt]
+  Integration Testing &
+    Jest + Supertest &
+    Tests API route handlers against a test PostgreSQL database using
+    real HTTP calls. Scrapers are mocked to return deterministic fixtures. \\[3pt]
+  System / E2E Testing &
+    Manual / Playwright Test &
+    Tests complete user workflows in a running application instance. Validates
+    UI rendering, navigation, and data accuracy end-to-end. \\[3pt]
+  Performance Testing &
+    Manual + \texttt{k6} &
+    Measures response latency and throughput for critical paths under
+    realistic load conditions. \\[3pt]
+  Security Testing &
+    Manual + OWASP ZAP &
+    Verifies authentication on protected endpoints, input validation,
+    and absence of sensitive data leakage. \\
+  \bottomrule
+\end{longtable}
+
+\section{Entry and Exit Criteria}
+
+\begin{longtable}{L{2.5cm} L{5.5cm} L{5cm}}
+  \toprule
+  \textbf{Phase} & \textbf{Entry Criteria} & \textbf{Exit Criteria} \\
+  \midrule
+  \endhead
+  Unit Testing &
+    \texttt{matcher.ts} source compiles with zero TypeScript errors. &
+    All 27 unit test cases pass with zero failures. \\[3pt]
+  Integration Testing &
+    Application starts successfully against a test database. &
+    All 17 integration test cases pass; no 5xx responses from valid inputs. \\[3pt]
+  System Testing &
+    Application deployed locally with Docker PostgreSQL running. &
+    All 8 critical system test cases pass. \\[3pt]
+  Performance Testing &
+    System tests passed; performance baselines established. &
+    All latency metrics within the NFR thresholds defined in the SRS. \\[3pt]
+  Security Testing &
+    Application running with production-equivalent environment variables. &
+    All 4 security test cases pass. \\
+  \bottomrule
+\end{longtable}
+
+\section{Defect Classification}
+
+\begin{longtable}{L{2cm} L{3cm} L{8cm}}
+  \toprule
+  \textbf{Severity} & \textbf{Label} & \textbf{Definition} \\
+  \midrule
+  \endhead
+  1 & Critical &
+    Data corruption, wrong product stored in DB, security bypass,
+    system crash on valid input. Must fix before release. \\[3pt]
+  2 & High &
+    Feature does not work as specified (wrong score, missed hard-reject,
+    broken API route). Must fix before evaluation. \\[3pt]
+  3 & Medium &
+    UI glitch, minor performance issue, non-critical API field missing. \\[3pt]
+  4 & Low &
+    Cosmetic, typo, log verbosity. Fix in next iteration. \\
+  \bottomrule
+\end{longtable}
+
+% ─── CHAPTER 3: TEST ENVIRONMENT ─────────────────────────────────────────────
+\chapter{Test Environment}
+
+\section{Hardware}
+\begin{itemize}[noitemsep]
+  \item Development machine: Windows 11 Home Single Language 10.0.26200
+  \item RAM: 8~GB minimum (Next.js + PostgreSQL + Playwright Chromium)
+  \item Internet: Required for live scrape tests (VS GraphQL, Flipkart)
+\end{itemize}
+
+\section{Software}
+\begin{longtable}{L{4cm} L{4cm} L{5cm}}
+  \toprule
+  \textbf{Component} & \textbf{Version} & \textbf{Purpose} \\
+  \midrule
+  \endhead
+  Node.js & 20+ & Runtime for Next.js and Jest \\
+  Docker Desktop & 24+ & PostgreSQL container \\
+  PostgreSQL & 16 (Docker image) & Test database (separate from dev) \\
+  Next.js & 16.2.4 & Application under test \\
+  Jest & 29+ (to install) & Unit and integration test runner \\
+  ts-jest & 29+ (to install) & TypeScript transform for Jest \\
+  Playwright Test & 1.59.1 & System / E2E test runner \\
+  \bottomrule
+\end{longtable}
+
+\section{Environment Variables for Testing}
+\begin{verbatim}
+DATABASE_URL=postgresql://aggregator:aggregator@localhost:54321/aggregator_test
+GROQ_API_KEY=<mock-key-for-integration-tests>
+SCRAPE_SECRET=test-secret-1234
+NODE_ENV=test
+\end{verbatim}
+
+% ─── CHAPTER 4: UNIT TEST CASES ──────────────────────────────────────────────
+\chapter{Unit Test Cases}
+
+Unit tests cover pure functions in \texttt{src/lib/scrapers/matcher.ts}.
+No network calls or database access are required.
+
+\section{normalizeText()}
+
+\rowcolors{2}{rowgray}{white}
+\begin{longtable}{C{1.6cm} L{3.5cm} L{4cm} L{3.5cm} C{1.5cm}}
+  \toprule
+  \rowcolor{unitcol}
+  \textbf{TC-ID} & \textbf{Test Name} & \textbf{Input} & \textbf{Expected Output} & \textbf{Status} \\
+  \midrule
+  \endhead
+  \midrule
+  \multicolumn{5}{r}{\small\itshape continued on next page\ldots}\\
+  \endfoot
+  \bottomrule
+  \endlastfoot
+
+  TC-U001 &
+    Basic lowercase conversion &
+    \texttt{"Apple iPhone 15"} &
+    \texttt{"apple iphone 15"} &
+    \PEND \\
+
+  TC-U002 &
+    Plus sign to ``plus'' &
+    \texttt{"Galaxy S24+"} &
+    \texttt{"galaxy s24 plus"} &
+    \PEND \\
+
+  TC-U003 &
+    Model code join (letter-digit dash) &
+    \texttt{"Sony WH-1000XM5"} &
+    \texttt{"sony wh1000xm5"} &
+    \PEND \\
+
+  TC-U004 &
+    Model code join does not affect digit-digit &
+    \texttt{"Samsung 55-inch TV"} &
+    \texttt{"samsung 55 inch tv"} &
+    \PEND \\
+
+  TC-U005 &
+    Remaining dashes become spaces &
+    \texttt{"On-Ear Headphones"} &
+    \texttt{"on ear headphones"} &
+    \PEND \\
+
+  TC-U006 &
+    Special characters removed &
+    \texttt{"iPhone 15 (128GB)"} &
+    \texttt{"iphone 15 128gb"} &
+    \PEND \\
+
+  TC-U007 &
+    Multiple spaces collapsed &
+    \texttt{"iPhone   15   Pro"} &
+    \texttt{"iphone 15 pro"} &
+    \PEND \\
+
+  TC-U008 &
+    Em-dash and underscores removed &
+    \texttt{"WF--1000XM4\_v2"} &
+    \texttt{"wf 1000xm4 v2"} &
+    \PEND \\
+
+\end{longtable}
+
+\section{parseQuery()}
+
+\rowcolors{2}{rowgray}{white}
+\begin{longtable}{C{1.6cm} L{3.5cm} L{4cm} L{3.5cm} C{1.5cm}}
+  \toprule
+  \rowcolor{unitcol}
+  \textbf{TC-ID} & \textbf{Test Name} & \textbf{Input} & \textbf{Expected Output} & \textbf{Status} \\
+  \midrule
+  \endhead
+  \midrule
+  \multicolumn{5}{r}{\small\itshape continued on next page\ldots}\\
+  \endfoot
+  \bottomrule
+  \endlastfoot
+
+  TC-U009 &
+    Brand extraction --- Apple &
+    \texttt{parseQuery("Apple iPhone 15 128GB",...)} &
+    \texttt{brand: "apple"} &
+    \PEND \\
+
+  TC-U010 &
+    Brand extraction --- Sony &
+    \texttt{parseQuery("Sony WH-1000XM5",...)} &
+    \texttt{brand: "sony"} &
+    \PEND \\
+
+  TC-U011 &
+    Storage token 128GB &
+    \texttt{parseQuery("iPhone 15 128GB",...)} &
+    \texttt{storageToken: "128gb"} &
+    \PEND \\
+
+  TC-U012 &
+    Storage token 256GB &
+    \texttt{parseQuery("Galaxy S25 256GB",...)} &
+    \texttt{storageToken: "256gb"} &
+    \PEND \\
+
+  TC-U013 &
+    Storage token 1TB &
+    \texttt{parseQuery("MacBook Pro 1TB",...)} &
+    \texttt{storageToken: "1tb"} &
+    \PEND \\
+
+  TC-U014 &
+    Variant --- Ultra &
+    \texttt{parseQuery("Galaxy S25 Ultra",...)} &
+    \texttt{variantToken: "ultra"} &
+    \PEND \\
+
+  TC-U015 &
+    Variant --- Pro Max before Pro &
+    \texttt{parseQuery("iPhone 15 Pro Max",...)} &
+    \texttt{variantToken: "pro max"} &
+    \PEND \\
+
+  TC-U016 &
+    Model token extraction &
+    \texttt{parseQuery("iPhone 15 128GB",...)} &
+    \texttt{modelTokens: ["15"]} &
+    \PEND \\
+
+  TC-U017 &
+    Storage token excluded from model tokens &
+    \texttt{parseQuery("iPhone 15 128GB",...)} &
+    \texttt{modelTokens does not contain "128gb"} &
+    \PEND \\
+
+  TC-U018 &
+    Model code as single token (WH-1000XM5) &
+    \texttt{parseQuery("Sony WH-1000XM5",...)} &
+    \texttt{modelTokens: ["wh1000xm5"]} &
+    \PEND \\
+
+  TC-U019 &
+    hasRejectPhrase --- renewed query &
+    \texttt{parseQuery("Renewed iPhone 14",...)} &
+    \texttt{hasRejectPhrase: true} &
+    \PEND \\
+
+  TC-U020 &
+    hasRejectPhrase --- normal query &
+    \texttt{parseQuery("iPhone 15 128GB",...)} &
+    \texttt{hasRejectPhrase: false} &
+    \PEND \\
+
+\end{longtable}
+
+\section{scoreCandidate() --- Hard Rejects}
+
+\rowcolors{2}{rowgray}{white}
+\begin{longtable}{C{1.6cm} L{4cm} L{3.5cm} L{3.5cm} C{1.5cm}}
+  \toprule
+  \rowcolor{unitcol}
+  \textbf{TC-ID} & \textbf{Test Name} & \textbf{Candidate Title} & \textbf{Expected Result} & \textbf{Status} \\
+  \midrule
+  \endhead
+  \midrule
+  \multicolumn{5}{r}{\small\itshape continued on next page\ldots}\\
+  \endfoot
+  \bottomrule
+  \endlastfoot
+
+  TC-U021 &
+    Reject accessory (case) &
+    \texttt{"iPhone 15 128GB Case"} &
+    \texttt{accepted: false, score: -100} &
+    \PEND \\
+
+  TC-U022 &
+    Reject accessory (charger) &
+    \texttt{"20W USB-C Charger for iPhone"} &
+    \texttt{accepted: false, score: -100} &
+    \PEND \\
+
+  TC-U023 &
+    Reject accessory (tempered glass) &
+    \texttt{"Tempered Glass for Samsung S24"} &
+    \texttt{accepted: false, score: -100} &
+    \PEND \\
+
+  TC-U024 &
+    Reject renewed (not requested) &
+    \texttt{"Renewed iPhone 15 128GB"} &
+    query hasRejectPhrase=false $\Rightarrow$
+    \texttt{accepted: false, score: -80} &
+    \PEND \\
+
+  TC-U025 &
+    Allow renewed (query requests it) &
+    \texttt{"Renewed iPhone 15 128GB"} &
+    query hasRejectPhrase=true $\Rightarrow$
+    \texttt{accepted: true} &
+    \PEND \\
+
+  TC-U026 &
+    Reject zero model token match &
+    \texttt{"Apple iPhone 14 128GB"} &
+    query modelTokens=["15"] $\Rightarrow$
+    \texttt{accepted: false, score: -50} &
+    \PEND \\
+
+  TC-U027 &
+    Reject storage conflict (256GB vs 128GB) &
+    \texttt{"Apple iPhone 15 256GB"} &
+    query storageToken="128gb" $\Rightarrow$
+    \texttt{accepted: false, score: -60} &
+    \PEND \\
+
+  TC-U028 &
+    Reject variant conflict (Pro vs Ultra) &
+    \texttt{"Samsung Galaxy S25 Pro 256GB"} &
+    query variantToken="ultra" $\Rightarrow$
+    \texttt{accepted: false, score: -60} &
+    \PEND \\
+
+\end{longtable}
+
+\section{scoreCandidate() --- Soft Scores}
+
+\rowcolors{2}{rowgray}{white}
+\begin{longtable}{C{1.6cm} L{4cm} L{3.5cm} L{3.5cm} C{1.5cm}}
+  \toprule
+  \rowcolor{unitcol}
+  \textbf{TC-ID} & \textbf{Test Name} & \textbf{Candidate Title} & \textbf{Expected Result} & \textbf{Status} \\
+  \midrule
+  \endhead
+  \midrule
+  \multicolumn{5}{r}{\small\itshape continued on next page\ldots}\\
+  \endfoot
+  \bottomrule
+  \endlastfoot
+
+  TC-U029 &
+    Brand match earns +30 &
+    \texttt{"Apple iPhone 15 128GB"} &
+    brand "apple" present $\Rightarrow$ score includes +30 &
+    \PEND \\
+
+  TC-U030 &
+    Missing brand deducts -30 &
+    \texttt{"Generic Phone 15 128GB"} &
+    query brand="apple" $\Rightarrow$ score includes -30 &
+    \PEND \\
+
+  TC-U031 &
+    All model tokens matched --- +40 &
+    \texttt{"iPhone 15 128GB"} &
+    modelTokens=["15"] fully matched $\Rightarrow$ +40 &
+    \PEND \\
+
+  TC-U032 &
+    Partial model token match (half) &
+    \texttt{"Galaxy S24 256GB"} &
+    modelTokens=["s24","256gb"] (1/2 matched) $\Rightarrow$ +20 &
+    \PEND \\
+
+  TC-U033 &
+    Storage match +20 &
+    \texttt{"iPhone 15 128GB"} &
+    storageToken="128gb" matched $\Rightarrow$ +20 &
+    \PEND \\
+
+  TC-U034 &
+    No storage in title -5 &
+    \texttt{"iPhone 15 Midnight"} &
+    storageToken="128gb", no GB in title $\Rightarrow$ -5 &
+    \PEND \\
+
+  TC-U035 &
+    Variant match +20 &
+    \texttt{"Galaxy S25 Ultra 256GB"} &
+    variantToken="ultra" matched $\Rightarrow$ +20 &
+    \PEND \\
+
+  TC-U036 &
+    Unexpected variant -15 &
+    \texttt{"Galaxy S25 Ultra 256GB"} &
+    query no variantToken $\Rightarrow$ -15 &
+    \PEND \\
+
+  TC-U037 &
+    Combo/bundle penalty -30 &
+    \texttt{"iPhone 15 128GB + AirPods Bundle"} &
+    query no bundle keyword $\Rightarrow$ -30 &
+    \PEND \\
+
+  TC-U038 &
+    TV title with ``4K Ultra HD'' --- no variant penalty &
+    \texttt{"Samsung 55 inch 4K Ultra HD Smart TV"} &
+    query no variantToken $\Rightarrow$ ``ultra hd'' stripped before
+    detection; no -15 penalty &
+    \PEND \\
+
+  TC-U039 &
+    Full iPhone 15 128GB positive score &
+    \texttt{"Apple iPhone 15 128GB Blue"} &
+    query "Apple iPhone 15 128GB" $\Rightarrow$
+    score $\geq$ 80, accepted: true &
+    \PEND \\
+
+  TC-U040 &
+    Vague query accepted at lower threshold &
+    \texttt{"Sony WH-1000XM5 Headphones"} &
+    query "Sony headphones", modelTokens=[] $\Rightarrow$
+    threshold=20, accepted: true &
+    \PEND \\
+
+\end{longtable}
+
+% ─── CHAPTER 5: INTEGRATION TEST CASES ──────────────────────────────────────
+\chapter{Integration Test Cases}
+
+Integration tests exercise the Next.js API route handlers against a real
+(test) PostgreSQL database. External scrapers are mocked to return fixture data.
+
+\section{POST /api/search/live}
+
+\rowcolors{2}{rowgray}{white}
+\begin{longtable}{C{1.6cm} L{3.5cm} L{3.5cm} L{3.5cm} C{1.5cm}}
+  \toprule
+  \rowcolor{intcol}
+  \textbf{TC-ID} & \textbf{Test Name} & \textbf{Input / Precondition} & \textbf{Expected Result} & \textbf{Status} \\
+  \midrule
+  \endhead
+  \midrule
+  \multicolumn{5}{r}{\small\itshape continued on next page\ldots}\\
+  \endfoot
+  \bottomrule
+  \endlastfoot
+
+  TC-I001 &
+    Valid query returns 200 with productId &
+    Body: \texttt{\{"query":"iPhone 15 128GB"\}} &
+    HTTP 200; response body contains \texttt{productId} (integer) &
+    \PEND \\
+
+  TC-I002 &
+    Missing query returns 400 &
+    Body: \texttt{\{\}} &
+    HTTP 400; body contains \texttt{\{"error":"Query is required"\}} &
+    \PEND \\
+
+  TC-I003 &
+    Empty query string returns 400 &
+    Body: \texttt{\{"query":""\}} &
+    HTTP 400 &
+    \PEND \\
+
+  TC-I004 &
+    Product record created in DB &
+    First time querying "iPhone 15 128GB" &
+    \texttt{Product} with slug \texttt{iphone-15-128gb} created in DB &
+    \PEND \\
+
+  TC-I005 &
+    ProductListing created per scraper result &
+    Mock returns VS + FK results &
+    Two \texttt{ProductListing} rows with source vijaysales and flipkart &
+    \PEND \\
+
+  TC-I006 &
+    PriceHistory row appended &
+    Fixture product price = 58190 &
+    One \texttt{PriceHistory} row per listing with correct price &
+    \PEND \\
+
+  TC-I007 &
+    Second call upserts, not duplicates &
+    Same query called twice &
+    DB still has one \texttt{Product} row; listing price updated &
+    \PEND \\
+
+  TC-I008 &
+    Response includes AI analysis &
+    Groq mock returns \texttt{\{summary,recommendation,...\}} &
+    Response body contains \texttt{aiAnalysis.summary} (non-empty string) &
+    \PEND \\
+
+  TC-I009 &
+    AI failure does not block response &
+    Groq mock throws network error &
+    HTTP 200 still returned; \texttt{aiAnalysis} may be null &
+    \PEND \\
+
+\end{longtable}
+
+\section{GET /api/search}
+
+\rowcolors{2}{rowgray}{white}
+\begin{longtable}{C{1.6cm} L{3.5cm} L{3.5cm} L{3.5cm} C{1.5cm}}
+  \toprule
+  \rowcolor{intcol}
+  \textbf{TC-ID} & \textbf{Test Name} & \textbf{Query Params} & \textbf{Expected Result} & \textbf{Status} \\
+  \midrule
+  \endhead
+  \midrule
+  \multicolumn{5}{r}{\small\itshape continued on next page\ldots}\\
+  \endfoot
+  \bottomrule
+  \endlastfoot
+
+  TC-I010 &
+    Full-text search by name &
+    \texttt{?q=iphone} &
+    Returns products where name contains "iphone" (case-insensitive) &
+    \PEND \\
+
+  TC-I011 &
+    Category filter &
+    \texttt{?category=Smartphones} &
+    All returned products have category = "Smartphones" &
+    \PEND \\
+
+  TC-I012 &
+    Sort by price ascending &
+    \texttt{?sort=price\_asc} &
+    Products ordered by minimum listing price ascending &
+    \PEND \\
+
+  TC-I013 &
+    Sort by rating descending &
+    \texttt{?sort=rating} &
+    Products ordered by average rating descending &
+    \PEND \\
+
+  TC-I014 &
+    No results for unknown query &
+    \texttt{?q=xyznoproduct999} &
+    HTTP 200; \texttt{data: []} &
+    \PEND \\
+
+\end{longtable}
+
+\section{POST /api/ai/analyze}
+
+\rowcolors{2}{rowgray}{white}
+\begin{longtable}{C{1.6cm} L{4cm} L{4cm} L{3.5cm} C{1.5cm}}
+  \toprule
+  \rowcolor{intcol}
+  \textbf{TC-ID} & \textbf{Test Name} & \textbf{Input / Precondition} & \textbf{Expected Result} & \textbf{Status} \\
+  \midrule
+  \endhead
+  \bottomrule
+  \endlastfoot
+
+  TC-I015 &
+    Returns AI analysis for valid product &
+    Existing productId, no cached analysis &
+    HTTP 200; body contains \texttt{summary}, \texttt{recommendation},
+    \texttt{bestSource} &
+    \PEND \\
+
+  TC-I016 &
+    Cached result returned within 24h &
+    Product has AIAnalysis row $<$ 24h old &
+    HTTP 200; body contains \texttt{cached: true} &
+    \PEND \\
+
+  TC-I017 &
+    Refreshes after 24h cache expiry &
+    AIAnalysis row $>$ 24h old &
+    Groq is called; new analysis stored; \texttt{cached: false} &
+    \PEND \\
+
+\end{longtable}
+
+\section{POST /api/scrape}
+
+\rowcolors{2}{rowgray}{white}
+\begin{longtable}{C{1.6cm} L{4cm} L{4cm} L{3.5cm} C{1.5cm}}
+  \toprule
+  \rowcolor{intcol}
+  \textbf{TC-ID} & \textbf{Test Name} & \textbf{Input / Precondition} & \textbf{Expected Result} & \textbf{Status} \\
+  \midrule
+  \endhead
+  \bottomrule
+  \endlastfoot
+
+  TC-I018 &
+    Missing secret rejected &
+    No \texttt{x-scrape-secret} header &
+    HTTP 403 Forbidden &
+    \PEND \\
+
+  TC-I019 &
+    Wrong secret rejected &
+    Header: \texttt{x-scrape-secret: wrongvalue} &
+    HTTP 403 Forbidden &
+    \PEND \\
+
+  TC-I020 &
+    Correct secret triggers scrapers &
+    Header: correct SCRAPE\_SECRET; scrapers mocked &
+    HTTP 200; response contains \texttt{upserted} count $\geq 1$ &
+    \PEND \\
+
+\end{longtable}
+
+\section{GET /api/price-history/[id]}
+
+\rowcolors{2}{rowgray}{white}
+\begin{longtable}{C{1.6cm} L{4cm} L{4cm} L{3.5cm} C{1.5cm}}
+  \toprule
+  \rowcolor{intcol}
+  \textbf{TC-ID} & \textbf{Test Name} & \textbf{Input} & \textbf{Expected Result} & \textbf{Status} \\
+  \midrule
+  \endhead
+  \bottomrule
+  \endlastfoot
+
+  TC-I021 &
+    Returns price history for known product &
+    Valid productId with 3 history rows &
+    HTTP 200; array of 3 objects with \texttt{price}, \texttt{recordedAt}, \texttt{source} &
+    \PEND \\
+
+  TC-I022 &
+    Returns empty array for product with no history &
+    Valid productId, no PriceHistory rows &
+    HTTP 200; \texttt{data: []} &
+    \PEND \\
+
+  TC-I023 &
+    Invalid productId returns 404 &
+    Non-existent id (e.g., 999999) &
+    HTTP 404 &
+    \PEND \\
+
+\end{longtable}
+
+% ─── CHAPTER 6: SYSTEM TEST CASES ────────────────────────────────────────────
+\chapter{System / End-to-End Test Cases}
+
+System tests validate complete user workflows in a running application.
+Tests are performed manually unless otherwise noted.
+
+\rowcolors{2}{rowgray}{white}
+\begin{longtable}{C{1.6cm} L{3.5cm} L{4cm} L{3.5cm} C{1.5cm}}
+  \toprule
+  \rowcolor{syscol}
+  \textbf{TC-ID} & \textbf{Test Name} & \textbf{Steps} & \textbf{Expected Result} & \textbf{Status} \\
+  \midrule
+  \endhead
+  \midrule
+  \multicolumn{5}{r}{\small\itshape continued on next page\ldots}\\
+  \endfoot
+  \bottomrule
+  \endlastfoot
+
+  TC-S001 &
+    Home page loads correctly &
+    Navigate to \texttt{http://localhost:3000/} &
+    Hero section visible with search bar; dark theme applied; no console errors &
+    \PEND \\
+
+  TC-S002 &
+    Search for existing product --- cache hit &
+    Database seeded; enter "iPhone 15" in search bar; press Enter &
+    Results page shows at least one product card with correct name, price, and
+    platform badge; response within 500~ms &
+    \PEND \\
+
+  TC-S003 &
+    Search for unknown product triggers live search &
+    Database empty; enter "Sony WH-1000XM5" in search bar &
+    LiveSearchTrigger appears with animated platform steps (Amazon, Flipkart,
+    Vijay Sales); after completion, redirects to product page &
+    \PEND \\
+
+  TC-S004 &
+    Live search animated steps display correctly &
+    While live search is running (observe UI) &
+    Each platform shows: ``Searching\ldots'' $\to$ ``Found it!'' (or skipped with
+    amber warning); steps do not skip prematurely &
+    \PEND \\
+
+  TC-S005 &
+    Product page shows price comparison &
+    Navigate to \texttt{/product/\{id\}} for a product with VS + FK listings &
+    Price Comparison tab shows two listing cards; cheapest marked ``Best Deal'';
+    price difference percentage visible on the other card &
+    \PEND \\
+
+  TC-S006 &
+    AI Analysis tab renders recommendation &
+    Click ``AI Analysis'' tab on product page &
+    Loading skeleton visible briefly; then summary, recommendation, and
+    bestSource badge appear; no console errors &
+    \PEND \\
+
+  TC-S007 &
+    Price history chart renders &
+    Product page with at least 2 price history rows &
+    Line chart visible on product page below listing cards;
+    axes labelled with dates and INR values &
+    \PEND \\
+
+  TC-S008 &
+    Category filter narrows results &
+    Search results page with mixed categories; select ``Smartphones'' filter &
+    Only Smartphone products shown; count decreases or stays equal &
+    \PEND \\
+
+  TC-S009 &
+    Sort by price ascending &
+    Search results page; select ``Price: Low to High'' sort &
+    Products displayed in ascending price order; verified by comparing first
+    and last card prices &
+    \PEND \\
+
+  TC-S010 &
+    Dashboard KPI cards load &
+    Navigate to \texttt{/dashboard} with seeded data &
+    KPI cards show non-zero values for total products, listings, and searches;
+    pie and bar charts render without errors &
+    \PEND \\
+
+  TC-S011 &
+    Refresh Prices button re-triggers live scrape &
+    On product page, click ``Refresh Prices'' &
+    Toast notification ``Refreshing\ldots'' appears; on completion, toast says
+    success; PriceHistory row count increases by at least 1 in DB &
+    \PEND \\
+
+  TC-S012 &
+    Dark mode persists across navigation &
+    Open app in dark mode; navigate from home $\to$ search $\to$ product $\to$ dashboard &
+    Dark theme maintained on all pages; no flash of light theme &
+    \PEND \\
+
+\end{longtable}
+
+% ─── CHAPTER 7: PERFORMANCE TEST CASES ───────────────────────────────────────
+\chapter{Performance Test Cases}
+
+Performance tests validate that the system meets the NFRs defined in the SRS.
+
+\rowcolors{2}{rowgray}{white}
+\begin{longtable}{C{1.6cm} L{3.5cm} L{3.5cm} L{3.5cm} C{1.5cm}}
+  \toprule
+  \rowcolor{perfcol}
+  \textbf{TC-ID} & \textbf{Test Name} & \textbf{Method / Tool} & \textbf{Acceptance Criterion} & \textbf{Status} \\
+  \midrule
+  \endhead
+  \midrule
+  \multicolumn{5}{r}{\small\itshape continued on next page\ldots}\\
+  \endfoot
+  \bottomrule
+  \endlastfoot
+
+  TC-P001 &
+    Live search total latency (all 3 platforms) &
+    Measure wall-clock time from POST \texttt{/api/search/live} to response;
+    repeat 3 times; take median &
+    Median $\leq$ 60 seconds on a 20~Mbps connection &
+    \PEND \\
+
+  TC-P002 &
+    Cached database search latency &
+    GET \texttt{/api/search?q=iphone} against seeded DB;
+    measure response time with browser DevTools Network tab &
+    Response time $\leq$ 500~ms; TTFB $\leq$ 200~ms &
+    \PEND \\
+
+  TC-P003 &
+    Product page SSR latency &
+    Navigate to \texttt{/product/\{id\}} (populated product);
+    measure TTFB via DevTools &
+    TTFB $\leq$ 2 seconds &
+    \PEND \\
+
+  TC-P004 &
+    AI analysis latency (Groq API) &
+    POST \texttt{/api/ai/analyze} with a product having 3 listings;
+    measure from request to JSON response &
+    Response time $\leq$ 8 seconds &
+    \PEND \\
+
+  TC-P005 &
+    AI analysis cache hit latency &
+    POST \texttt{/api/ai/analyze} for a product with cached analysis ($<$ 24h) &
+    Response time $\leq$ 100~ms (DB-only, no Groq call) &
+    \PEND \\
+
+  TC-P006 &
+    Vijay Sales scraper latency &
+    Measure \texttt{liveVS()} execution time for one product query (3 runs, median) &
+    $\leq$ 3 seconds including GraphQL request + scoring &
+    \PEND \\
+
+  TC-P007 &
+    Flipkart Playwright scraper latency &
+    Measure \texttt{liveFlipkart()} execution time for one query &
+    $\leq$ 45 seconds (includes browser launch, page load, DOM evaluation) &
+    \PEND \\
+
+  TC-P008 &
+    5 concurrent live search requests &
+    Use \texttt{k6} to simulate 5 virtual users simultaneously sending
+    POST \texttt{/api/search/live} with different queries &
+    All 5 requests complete with HTTP 200; no 5xx errors; no deadlocks &
+    \PEND \\
+
+\end{longtable}
+
+% ─── CHAPTER 8: SECURITY TEST CASES ─────────────────────────────────────────
+\chapter{Security Test Cases}
+
+\rowcolors{2}{rowgray}{white}
+\begin{longtable}{C{1.6cm} L{3.5cm} L{3.5cm} L{3.5cm} C{1.5cm}}
+  \toprule
+  \rowcolor{seccol}
+  \textbf{TC-ID} & \textbf{Test Name} & \textbf{Method} & \textbf{Expected Result} & \textbf{Status} \\
+  \midrule
+  \endhead
+  \bottomrule
+  \endlastfoot
+
+  TC-SEC001 &
+    Scrape endpoint --- missing secret &
+    POST \texttt{/api/scrape} with no \texttt{x-scrape-secret} header &
+    HTTP 403; body: \texttt{\{"error":"Unauthorized"\}}; no scrape triggered &
+    \PEND \\
+
+  TC-SEC002 &
+    Scrape endpoint --- wrong secret &
+    POST \texttt{/api/scrape} with header value \texttt{"wrongsecret"} &
+    HTTP 403; body: \texttt{\{"error":"Unauthorized"\}} &
+    \PEND \\
+
+  TC-SEC003 &
+    SQL injection in search query &
+    GET \texttt{/api/search?q=' OR '1'='1} &
+    HTTP 200 with valid (possibly empty) results; no DB error; Prisma
+    parameterisation prevents injection &
+    \PEND \\
+
+  TC-SEC004 &
+    No env variable leakage in response &
+    Inspect all API response bodies for strings containing
+    \texttt{DATABASE\_URL}, \texttt{GROQ\_API\_KEY}, or \texttt{SCRAPE\_SECRET} &
+    No API response contains environment variable values &
+    \PEND \\
+
+  TC-SEC005 &
+    No stack trace in error response &
+    Send malformed JSON to \texttt{/api/ai/analyze} &
+    HTTP 4xx/5xx; response body contains only a user-facing error message,
+    not a Node.js stack trace &
+    \PEND \\
+
+  TC-SEC006 &
+    HTTPS enforced in production &
+    Attempt HTTP request to the production URL (if deployed) &
+    Redirected to HTTPS or connection refused; no plaintext communication &
+    \PEND \\
+
+\end{longtable}
+
+% ─── CHAPTER 9: TRACEABILITY MATRIX ─────────────────────────────────────────
+\chapter{Requirements Traceability Matrix}
+
+The table below maps each functional requirement from the SRS to the test
+cases that verify it.
+
+\rowcolors{2}{rowgray}{white}
+\begin{longtable}{L{2cm} L{5.5cm} L{6cm}}
+  \toprule
+  \textbf{FR-ID} & \textbf{Requirement Name} & \textbf{Covering Test Cases} \\
+  \midrule
+  \endhead
+  \midrule
+  \multicolumn{3}{r}{\small\itshape continued on next page\ldots}\\
+  \endfoot
+  \bottomrule
+  \endlastfoot
+
+  FR-001 & Live Search &
+    TC-I001, TC-I002, TC-I003, TC-I004, TC-I005, TC-I006, TC-I007,
+    TC-S003, TC-S004, TC-P001 \\[3pt]
+
+  FR-002 & Product Identity Matching &
+    TC-U001--TC-U040 (all unit tests cover the scoring engine);
+    TC-I004, TC-I005 (verify correct product stored) \\[3pt]
+
+  FR-003 & Price Comparison Display &
+    TC-S005, TC-S009, TC-I010, TC-I011, TC-I012 \\[3pt]
+
+  FR-004 & AI Purchase Recommendation &
+    TC-I008, TC-I009, TC-I015, TC-I016, TC-I017, TC-S006, TC-P004, TC-P005 \\[3pt]
+
+  FR-005 & Price History Tracking &
+    TC-I006, TC-S007, TC-I021, TC-I022, TC-P002 \\[3pt]
+
+  FR-006 & Batch Scraping &
+    TC-I018, TC-I019, TC-I020 \\[3pt]
+
+  FR-007 & Database Text Search and Filtering &
+    TC-I010, TC-I011, TC-I012, TC-I013, TC-I014, TC-S002, TC-S008 \\[3pt]
+
+  FR-008 & On-Demand Price Refresh &
+    TC-S011, TC-P006, TC-P007 \\[3pt]
+
+  FR-009 & Administrative Dashboard &
+    TC-S010 \\[3pt]
+
+  FR-010 & Dark Mode UI Theme &
+    TC-S001, TC-S012 \\[3pt]
+
+  NFR-P01 & Live search $\leq$ 60s &
+    TC-P001 \\[3pt]
+
+  NFR-P02 & Cached search $\leq$ 500ms &
+    TC-P002 \\[3pt]
+
+  NFR-P03 & Product page TTFB $\leq$ 2s &
+    TC-P003 \\[3pt]
+
+  NFR-P04 & AI latency $\leq$ 8s &
+    TC-P004 \\[3pt]
+
+  NFR-P05 & 5 concurrent users &
+    TC-P008 \\[3pt]
+
+  NFR-R01 & Partial scrape failure graceful &
+    TC-I009 \\[3pt]
+
+  NFR-S01 & Scrape endpoint protection &
+    TC-SEC001, TC-SEC002 \\[3pt]
+
+  NFR-S03 & Input sanitisation &
+    TC-SEC003 \\[3pt]
+
+  NFR-S04 & No sensitive data in responses &
+    TC-SEC004, TC-SEC005 \\[3pt]
+
+\end{longtable}
+
+% ─── CHAPTER 10: TEST SUMMARY ────────────────────────────────────────────────
+\chapter{Test Summary}
+
+\section{Test Case Count by Category}
+
+\begin{longtable}{L{4cm} C{2cm} C{3cm} C{3cm}}
+  \toprule
+  \textbf{Category} & \textbf{Count} & \textbf{Automated?} & \textbf{Priority} \\
+  \midrule
+  \endhead
+  \bottomrule
+  \endlastfoot
+
+  Unit Tests (\texttt{matcher.ts}) & 40 & Yes (Jest) & Critical \\
+  Integration Tests (API routes)   & 23 & Yes (Jest + Supertest) & High \\
+  System / E2E Tests               & 12 & Manual / Playwright & High \\
+  Performance Tests                & 8  & Manual / k6 & Medium \\
+  Security Tests                   & 6  & Manual / OWASP ZAP & High \\
+  \midrule
+  \textbf{Total} & \textbf{89} & & \\
+  \bottomrule
+\end{longtable}
+
+\section{Known Limitations and Risks}
+
+\begin{enumerate}[noitemsep]
+  \item \textbf{Amazon Bot Detection (Critical Risk):} Amazon.in returns HTTP 503
+        for programmatic requests. TC-I005 and TC-S003 will show Amazon results
+        as null in all real test runs. This is a fundamental platform constraint,
+        not a system defect.
+
+  \item \textbf{Playwright Fragility (Medium Risk):} Flipkart's DOM structure
+        may change between evaluation periods, causing TC-P007 and related
+        Flipkart tests to fail. The scraper would need a DOM selector update.
+
+  \item \textbf{Groq API Quota (Low Risk):} Integration tests that call the
+        real Groq API will consume token quota. A mock should be used in CI
+        environments.
+
+  \item \textbf{No Automated Test Suite Currently Configured (High Risk):}
+        All 89 test cases are in \textit{Planned} status. Configuring Jest and
+        ts-jest is the highest-priority outstanding task before test execution.
+\end{enumerate}
+
+\section{Recommended Test Execution Order}
+\begin{enumerate}[noitemsep]
+  \item Configure Jest + ts-jest in the project.
+  \item Run all unit tests (TC-U001--TC-U040) --- no infrastructure required.
+  \item Start Docker PostgreSQL test instance.
+  \item Run integration tests (TC-I001--TC-I023) with mocked scrapers.
+  \item Start full application; run system tests manually (TC-S001--TC-S012).
+  \item Run performance tests (TC-P001--TC-P008) individually.
+  \item Run security tests (TC-SEC001--TC-SEC006).
+\end{enumerate}
+
+\chapter*{Revision History}
+\begin{longtable}{C{1.5cm} C{2cm} L{4cm} L{5cm}}
+  \toprule
+  \textbf{Version} & \textbf{Date} & \textbf{Author} & \textbf{Changes} \\
+  \midrule
+  \endhead
+  \bottomrule
+  \endlastfoot
+  1.0 & April 2026 & Adrij Bhadra &
+    Initial release. 89 test cases across 5 categories. Full traceability
+    matrix. Known limitations documented. \\
+  \bottomrule
+\end{longtable}
+
+\end{document}

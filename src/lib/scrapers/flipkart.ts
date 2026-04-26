@@ -1,6 +1,7 @@
 import { chromium } from "playwright";
 import { PRODUCTS } from "./products";
 import type { NormalizedProduct, SourceName } from "./types";
+import { parseQuery, scoreCandidate } from "./matcher";
 
 function cleanName(name: string): string {
   return name
@@ -50,20 +51,25 @@ export async function scrapeFlipkart(): Promise<NormalizedProduct[]> {
         );
         await page.waitForTimeout(3000);
 
-        // page.evaluate must use only inline code — tsx/esbuild injects __name()
-        // into named function declarations which breaks in the browser sandbox.
-        const found = await page.evaluate((minPrice: number) => {
+        // Collect up to 5 candidate cards from the search page.
+        // Scoring happens in Node.js after evaluate returns — do NOT add named
+        // function declarations here; esbuild injects __name() which breaks in
+        // the browser sandbox.
+        const candidates = await page.evaluate((minP: number) => {
+          const res: { name: string; price: number; url: string; imageUrl: string; rating: number | null }[] = [];
+          const seenUrls = new Set<string>();
+
           const priceEls = Array.from(document.querySelectorAll("div, span")).filter((el) => {
             if (el.children.length > 0) return false;
             return /^₹[\d,]+$/.test((el as HTMLElement).innerText?.trim() || "");
           });
 
           for (const priceEl of priceEls) {
-            const price = parseInt((priceEl as HTMLElement).innerText.replace(/[^0-9]/g, ""));
-            if (price < minPrice || price > 1000000) continue;
+            if (res.length >= 5) break;
 
-            // Walk up to find a card container that has BOTH a product link AND an img.
-            // Flipkart sometimes wraps only the price section in <a>, with image/title outside.
+            const price = parseInt((priceEl as HTMLElement).innerText.replace(/[^0-9]/g, ""));
+            if (price < minP || price > 1000000) continue;
+
             let container: Element | null = priceEl.parentElement;
             let link: HTMLAnchorElement | null = null;
             let img: HTMLImageElement | null = null;
@@ -75,14 +81,21 @@ export async function scrapeFlipkart(): Promise<NormalizedProduct[]> {
             }
             if (!link || !img || !container) continue;
 
-            // Within the card, pick the LOWEST price >= minPrice to get sale price, not MRP.
+            const href = link.getAttribute("href") || "";
+            const url = href.startsWith("http")
+              ? href.split("?")[0]
+              : "https://www.flipkart.com" + href.split("?")[0];
+            if (seenUrls.has(url)) continue;
+            seenUrls.add(url);
+
+            // Pick the lowest price within the card (sale price, not MRP)
             let salePrice = price;
             for (const pe of Array.from(container.querySelectorAll("div, span"))) {
               if (pe.children.length > 0) continue;
               const t = (pe as HTMLElement).innerText?.trim() || "";
               if (!/^₹[\d,]+$/.test(t)) continue;
               const p = parseInt(t.replace(/[^0-9]/g, ""));
-              if (p >= minPrice && p < salePrice) salePrice = p;
+              if (p >= minP && p < salePrice) salePrice = p;
             }
 
             const imgSrc = img.getAttribute("src") || img.getAttribute("data-src") || "";
@@ -108,33 +121,46 @@ export async function scrapeFlipkart(): Promise<NormalizedProduct[]> {
               if (r >= 1 && r <= 5 && /^\d\.\d$/.test(t)) { rating = r; break; }
             }
 
-            const href = link.getAttribute("href") || "";
-            const url = href.startsWith("http") ? href.split("?")[0] : "https://www.flipkart.com" + href.split("?")[0];
-            return { name, price: salePrice, url, imageUrl: imgSrc, rating, reviewCount: null };
+            res.push({ name, price: salePrice, url, imageUrl: imgSrc, rating });
           }
-          return null;
+          return res;
         }, product.minPrice);
 
-        if (found?.name && found.price) {
+        // Score all candidates in Node.js and pick the highest-accepted one
+        const parsedQ = parseQuery(product.fkQuery, product.category, product.minPrice);
+        let bestScore = -Infinity;
+        let best: typeof candidates[0] | null = null;
+
+        for (const c of candidates) {
+          const match = scoreCandidate(c.name, parsedQ);
+          console.log(`FK [${product.slug}] "${c.name.slice(0, 60)}" → score=${match.score} (${match.reasons.join(", ")})`);
+          if (match.accepted && match.score > bestScore) {
+            bestScore = match.score;
+            best = c;
+          }
+        }
+
+        if (!best?.name) {
+          console.warn(`Flipkart: no accepted candidate for "${product.fkQuery}" (${candidates.length} cards checked)`);
+        } else {
           results.push({
-            name: cleanName(found.name),
+            name: cleanName(best.name),
             slug: `fk-${product.slug}`,
             category: product.category,
             domain: "electronics",
-            brand: extractBrand(found.name),
+            brand: extractBrand(best.name),
             source: "flipkart" as SourceName,
-            sourceId: found.url.split("/p/")[1]?.split("?")[0] || product.slug,
-            price: found.price,
+            sourceId: best.url.split("/p/")[1]?.split("?")[0] || product.slug,
+            price: best.price,
             currency: "INR",
-            rating: found.rating ?? undefined,
-            reviewCount: found.reviewCount ?? undefined,
-            url: found.url,
-            imageUrl: found.imageUrl || undefined,
+            rating: best.rating ?? undefined,
+            url: best.url,
+            imageUrl: best.imageUrl || undefined,
             inStock: true,
           });
         }
       } catch (err) {
-        console.error(`Flipkart error for ${product.fkQuery}:`, err);
+        console.error(`Flipkart error for "${product.fkQuery}":`, err);
       } finally {
         await page.close();
       }

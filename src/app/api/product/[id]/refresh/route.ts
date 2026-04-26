@@ -11,7 +11,13 @@ export async function POST(
   const product = await prisma.product.findUnique({ where: { id } });
   if (!product) return NextResponse.json({ success: false }, { status: 404 });
 
-  const { products } = await liveSearch(product.name);
+  let products: Awaited<ReturnType<typeof liveSearch>>["products"];
+  try {
+    ({ products } = await liveSearch(product.name));
+  } catch (err) {
+    console.error("refresh liveSearch error:", err);
+    return NextResponse.json({ success: false, error: "Search failed" }, { status: 502 });
+  }
   if (!products.length) {
     return NextResponse.json({ success: false, error: "No results from any platform" });
   }

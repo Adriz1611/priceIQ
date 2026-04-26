@@ -1,5 +1,6 @@
 import { PRODUCTS } from "./products";
 import type { NormalizedProduct, SourceName } from "./types";
+import { parseQuery, scoreCandidate } from "./matcher";
 
 function extractBrand(name: string): string {
   const brands = [
@@ -46,42 +47,60 @@ export async function scrapeVijaySales(): Promise<NormalizedProduct[]> {
 
       if (!items.length) continue;
 
-      // Skip items with price below minPrice (probably accessories)
-      const item = items.find((i) => {
-        const p = i.price_range?.maximum_price?.final_price?.value;
-        return p != null && p >= product.minPrice;
-      }) ?? items[0];
+      const parsedQ = parseQuery(product.vsQuery, product.category, product.minPrice);
 
-      const price = item.price_range?.maximum_price?.final_price?.value;
-      if (!price || price < product.minPrice) continue;
+      let bestScore = -Infinity;
+      let bestItem: typeof items[0] | null = null;
+      let bestCleanName = "";
 
-      // Vijay Sales appends SKU to product names (e.g. "Apple iPhone 15P220946") — strip it
-      const cleanName = item.name.replace(/[A-Z][A-Z0-9]{4,}$/, "").trim();
-      const brand = extractBrand(cleanName);
+      for (const item of items) {
+        const price = item.price_range?.maximum_price?.final_price?.value;
+        if (!price || price < product.minPrice) continue;
 
+        // VS appends internal SKU codes to product names — strip them
+        const cleanName = item.name.replace(/[A-Z][A-Z0-9]{4,}$/, "").trim();
+        const match = scoreCandidate(cleanName, parsedQ);
+        console.log(`VS [${product.slug}] "${cleanName}" → score=${match.score} (${match.reasons.join(", ")})`);
+
+        if (match.accepted && (
+          match.score > bestScore ||
+          (match.score === bestScore && (item.review_count ?? 0) > (bestItem?.review_count ?? 0))
+        )) {
+          bestScore = match.score;
+          bestItem = item;
+          bestCleanName = cleanName;
+        }
+      }
+
+      if (!bestItem) {
+        console.warn(`VS: no accepted candidate for "${product.vsQuery}" (all ${items.length} rejected)`);
+        continue;
+      }
+
+      const price = bestItem.price_range?.maximum_price?.final_price?.value;
       results.push({
-        name: cleanName,
+        name: bestCleanName,
         slug: `vs-${product.slug}`,
         category: product.category,
         domain: "electronics",
-        brand,
+        brand: extractBrand(bestCleanName),
         source: "vijaysales" as SourceName,
-        sourceId: String(item.sku),
+        sourceId: String(bestItem.sku),
         price,
         currency: "INR",
-        rating: item.rating_summary ? item.rating_summary / 20 : undefined,
-        reviewCount: item.review_count || undefined,
-        url: `https://www.vijaysales.com/${item.url_key}`,
-        imageUrl: item.image?.url
-          ? item.image.url.startsWith("http")
-            ? item.image.url
-            : `https://www.vijaysales.com${item.image.url}`
+        rating: bestItem.rating_summary ? bestItem.rating_summary / 20 : undefined,
+        reviewCount: bestItem.review_count || undefined,
+        url: `https://www.vijaysales.com/${bestItem.url_key}`,
+        imageUrl: bestItem.image?.url
+          ? bestItem.image.url.startsWith("http")
+            ? bestItem.image.url
+            : `https://www.vijaysales.com${bestItem.image.url}`
           : undefined,
         inStock: true,
-        extraData: item.mrp ? { mrp: item.mrp } : undefined,
+        extraData: bestItem.mrp ? { mrp: bestItem.mrp } : undefined,
       });
-    } catch {
-      // skip failed query
+    } catch (err) {
+      console.error(`VS error for "${product.vsQuery}":`, err);
     }
     await new Promise((r) => setTimeout(r, 500));
   }

@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(node_modules/.bin/next build *)",
+      "WebFetch(domain:vsprod.vijaysales.com)",
+      "WebFetch(domain:www.amazon.in)",
+      "WebFetch(domain:www.flipkart.com)",
+      "Bash(ls node_modules/.bin/tsc*)",
+      "Bash(ls node_modules/typescript/bin/)",
+      "Bash(node -e \"require\\('./node_modules/typescript/lib/typescript.js'\\); console.log\\('TypeScript available'\\)\")",
+      "Bash(npm run *)",
+      "Bash(grep -n \"\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\" system_design.tex)"
+    ]
+  }
+}

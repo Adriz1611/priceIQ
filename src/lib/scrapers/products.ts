@@ -8,12 +8,12 @@ export const PRODUCTS = [
     minPrice: 40000,
   },
   {
-    slug: "samsung-galaxy-s24",
-    vsQuery: "Samsung Galaxy S24 256GB",
-    amzQuery: "Samsung Galaxy S24 5G 256GB smartphone",
-    fkQuery: "Samsung Galaxy S24 5G 256GB smartphone",
+    slug: "samsung-galaxy-s25",
+    vsQuery: "Samsung Galaxy S25 5G 256GB",
+    amzQuery: "Samsung Galaxy S25 5G 256GB smartphone",
+    fkQuery: "Samsung Galaxy S25 5G 256GB smartphone",
     category: "Smartphones",
-    minPrice: 30000,
+    minPrice: 50000,
   },
   {
     slug: "sony-wh-1000xm5",

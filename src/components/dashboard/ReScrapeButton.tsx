@@ -14,9 +14,8 @@ export function ReScrapeButton() {
     setLoading(true);
     toast.info("Scraping all platforms… this takes 3–5 minutes.");
     try {
-      const res = await fetch("/api/scrape", {
+      const res = await fetch("/api/admin/rescrape", {
         method: "POST",
-        headers: { "x-scrape-secret": "changeme" },
       });
       const data = await res.json();
       if (data.success) {

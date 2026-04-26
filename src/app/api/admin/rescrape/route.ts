@@ -1,17 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { runAllScrapers } from "@/lib/scrapers";
 
-export async function POST(req: NextRequest) {
-  const secret = req.headers.get("x-scrape-secret");
-  if (!secret || secret !== process.env.SCRAPE_SECRET) {
-    return NextResponse.json({ success: false, error: "Forbidden" }, { status: 403 });
-  }
-
+// Server-side scrape trigger — reads SCRAPE_SECRET from env so the client
+// never needs to know the secret. Only the dashboard button uses this route.
+export async function POST() {
   const products = await runAllScrapers();
   let upserted = 0;
 
-  // Group by canonical slug (strip source prefix)
   const slugToProductId = new Map<string, string>();
 
   for (const p of products) {
