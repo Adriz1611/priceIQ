@@ -14,11 +14,10 @@ export async function seedPriceHistory(
   basePrice: number,
   prisma: PrismaClient
 ): Promise<void> {
-  const existing = await prisma.priceHistory.findFirst({
-    where: { productId, source },
-  });
-
-  if (existing) return;
+  // Only skip if bulk history (25+ entries) already exists.
+  // A single real-time entry written by the search route does NOT count.
+  const count = await prisma.priceHistory.count({ where: { productId, source } });
+  if (count >= 25) return;
 
   const slab = getPriceSlab(basePrice);
   const cap = basePrice * 0.25;

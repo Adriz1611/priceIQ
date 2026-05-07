@@ -17,7 +17,22 @@ function detectCategory(query: string): { category: string; minPrice: number } {
     return { category: "Cameras", minPrice: 10000 };
   if (/watch|smartwatch|band|fitness/i.test(q))
     return { category: "Wearables", minPrice: 500 };
-  return { category: "Electronics", minPrice: 500 };
+  // Home appliances — must come before generic Electronics fallback
+  if (/\bac\b|air.?condition|split.?ac|window.?ac|inverter.?ac|daikin|voltas|blue.?star|hitachi.*ton|lg.*ton|samsung.*ton|carrier.*ton|panasonic.*ton|\bton\b.*\bac\b|\bac\b.*\bton\b/i.test(q))
+    return { category: "Air Conditioners", minPrice: 15000 };
+  if (/refrigerator|fridge|double.?door|single.?door|side.?by.?side|frost.?free/i.test(q))
+    return { category: "Refrigerators", minPrice: 8000 };
+  if (/washing.?machine|washer|front.?load|top.?load/i.test(q))
+    return { category: "Washing Machines", minPrice: 8000 };
+  if (/microwave|oven|convection.?oven/i.test(q))
+    return { category: "Microwaves", minPrice: 3000 };
+  if (/vacuum|cleaner|robot.?mop|roomba/i.test(q))
+    return { category: "Appliances", minPrice: 2000 };
+  if (/printer|scanner|projector/i.test(q))
+    return { category: "Electronics", minPrice: 3000 };
+  if (/gpu|graphics.?card|rtx|rx\s*\d|processor|cpu|ram|ssd|hard.?disk|motherboard/i.test(q))
+    return { category: "Computer Components", minPrice: 2000 };
+  return { category: "Electronics", minPrice: 1000 };
 }
 
 function extractBrand(name: string): string {
