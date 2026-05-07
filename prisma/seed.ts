@@ -3,6 +3,7 @@ dotenv.config({ path: ".env.local" });
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { runAllScrapers } from "../src/lib/scrapers/index";
+import { pickBestImage, fetchProductImage } from "../src/lib/scrapers/imageSearch";
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
@@ -49,8 +50,14 @@ async function main() {
   const products = await runAllScrapers();
   console.log(`\nTotal fetched: ${products.length} items\n`);
 
-  // Group by normalized query slug: vs-iphone-15-128gb, amz-iphone-15-128gb, fk-iphone-15-128gb
-  // all map to "iphone15128gb"
+  // Group all scraped results by canonical slug first so we can pick the best image
+  const grouped = new Map<string, typeof products>();
+  for (const p of products) {
+    const key = normalizeQueryKey(p.slug);
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key)!.push(p);
+  }
+
   const queryKeyToProductId = new Map<string, string>();
   let created = 0;
 
@@ -60,6 +67,15 @@ async function main() {
     let productId = queryKeyToProductId.get(queryKey);
 
     if (!productId) {
+      const siblings = grouped.get(queryKey) ?? [p];
+      let bestImage = pickBestImage(siblings);
+
+      // DDG fallback when no reliable CDN image available
+      if (!bestImage) {
+        console.log(`  Fetching DDG image for: ${p.name}`);
+        bestImage = await fetchProductImage(p.name);
+      }
+
       const product = await prisma.product.upsert({
         where: { slug: queryKey },
         create: {
@@ -69,11 +85,11 @@ async function main() {
           domain: p.domain,
           brand: p.brand,
           description: p.description,
-          imageUrl: p.imageUrl,
+          imageUrl: bestImage,
         },
         update: {
           brand: p.brand ?? undefined,
-          imageUrl: p.imageUrl ?? undefined,
+          imageUrl: bestImage ?? undefined,
         },
       });
       productId = product.id;

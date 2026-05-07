@@ -76,7 +76,9 @@
       "Bash(python3 -c \"import json,sys; p=json.load\\(sys.stdin\\); print\\('deps:', list\\(p.get\\('dependencies',{}\\).keys\\(\\)\\)\\); print\\('peerDeps:', list\\(p.get\\('peerDependencies',{}\\).keys\\(\\)\\)\\)\")",
       "Bash(python3 -c \"import json,sys; p=json.load\\(sys.stdin\\); print\\('deps:', list\\(p.get\\('dependencies',{}\\).keys\\(\\)\\)\\)\")",
       "Bash(echo \"Merge status: $?\")",
-      "Bash(docker container prune *)"
+      "Bash(docker container prune *)",
+      "Bash(DATABASE_URL=\"postgresql://aggregator:aggregator@localhost:5432/aggregator\" PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"yes\" npx prisma *)",
+      "Bash(DATABASE_URL=\"postgresql://aggregator:aggregator@localhost:5432/aggregator\" npm run *)"
     ]
   }
 }

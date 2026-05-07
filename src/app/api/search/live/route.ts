@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { liveSearch } from "@/lib/scrapers/live";
 import { analyzeProduct, generateProductSummary } from "@/lib/ai/groq";
 import { seedPriceHistory } from "@/lib/priceHistoryGen";
+import { pickBestImage, fetchProductImage } from "@/lib/scrapers/imageSearch";
 
 export async function POST(req: NextRequest) {
   let query: string;
@@ -33,6 +34,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: "No products found" }, { status: 404 });
   }
 
+  // Pick the best available image (Amazon > Flipkart > VS) then DDG fallback
+  const bestImage = pickBestImage(products);
+
   // Upsert the canonical product
   const product = await prisma.product.upsert({
     where: { slug: canonicalSlug },
@@ -42,13 +46,22 @@ export async function POST(req: NextRequest) {
       category,
       domain: "electronics",
       brand: products[0].brand,
-      imageUrl: products[0].imageUrl,
+      imageUrl: bestImage,
     },
     update: {
       brand: products[0].brand ?? undefined,
-      imageUrl: products[0].imageUrl ?? undefined,
+      imageUrl: bestImage ?? undefined,
     },
   });
+
+  // If no image found from scrapers, fetch one from DuckDuckGo in the background
+  if (!bestImage) {
+    fetchProductImage(products[0].name)
+      .then((url) => {
+        if (url) prisma.product.update({ where: { id: product.id }, data: { imageUrl: url } }).catch(() => {});
+      })
+      .catch(() => {});
+  }
 
   for (const p of products) {
     await prisma.productListing.upsert({
