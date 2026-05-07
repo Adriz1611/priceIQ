@@ -7,14 +7,33 @@ import { runAllScrapers } from "../src/lib/scrapers/index";
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
 const prisma = new PrismaClient({ adapter });
 
+function getPriceSlab(price: number): number {
+  if (price < 1000) return 100;
+  if (price < 10000) return 500;
+  if (price < 50000) return 1000;
+  if (price < 100000) return 2000;
+  return 5000;
+}
+
 function generatePriceHistory(productId: string, source: string, basePrice: number) {
+  const slab = getPriceSlab(basePrice);
+  const cap = basePrice * 0.25; // max drift from base: ±25%
   const entries = [];
-  for (let dayOffset = 30; dayOffset >= 1; dayOffset--) {
+  let current = basePrice;
+
+  for (let dayOffset = 30; dayOffset >= 0; dayOffset--) {
     const date = new Date();
     date.setDate(date.getDate() - dayOffset);
-    const drift = 1 + (Math.random() * 0.08 - 0.04);
-    const price = Math.round(basePrice * drift);
-    entries.push({ productId, source, price, recordedAt: date });
+
+    // Random walk: -slab, stay (×2 weight), or +slab
+    const moves = [-slab, 0, 0, slab];
+    const delta = moves[Math.floor(Math.random() * moves.length)];
+    current += delta;
+    // Clamp within ±25% of base, then round to nearest 100
+    current = Math.max(basePrice - cap, Math.min(basePrice + cap, current));
+    current = Math.round(current / 100) * 100;
+
+    entries.push({ productId, source, price: current, recordedAt: new Date(date) });
   }
   return entries;
 }

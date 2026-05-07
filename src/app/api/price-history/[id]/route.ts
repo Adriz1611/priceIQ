@@ -7,20 +7,20 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const history = await prisma.priceHistory.findMany({
+  const rows = await prisma.priceHistory.findMany({
     where: { productId: id },
     orderBy: { recordedAt: "asc" },
+    take: 90,
   });
 
-  // Group by source
-  const grouped: Record<string, { date: string; price: number }[]> = {};
-  for (const entry of history) {
-    if (!grouped[entry.source]) grouped[entry.source] = [];
-    grouped[entry.source].push({
-      date: entry.recordedAt.toISOString().split("T")[0],
-      price: entry.price,
-    });
+  // Merge into { date, vijaysales?, amazon?, flipkart? }[]
+  type Row = { date: string; [source: string]: number | string };
+  const byDate = new Map<string, Row>();
+  for (const row of rows) {
+    const date = row.recordedAt.toISOString().slice(0, 10);
+    if (!byDate.has(date)) byDate.set(date, { date });
+    (byDate.get(date) as Row)[row.source] = row.price;
   }
 
-  return NextResponse.json({ success: true, data: grouped });
+  return NextResponse.json({ history: Array.from(byDate.values()) });
 }

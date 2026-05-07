@@ -1,6 +1,10 @@
 import Groq from "groq-sdk";
 
-export const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+let _groq: Groq | null = null;
+function getGroq(): Groq {
+  if (!_groq) _groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  return _groq;
+}
 
 interface ListingInput {
   source: string;
@@ -22,7 +26,7 @@ export async function generateProductSummary(
   name: string,
   category: string
 ): Promise<string> {
-  const response = await groq.chat.completions.create({
+  const response = await getGroq().chat.completions.create({
     model: "llama-3.3-70b-versatile",
     messages: [
       {
@@ -78,7 +82,7 @@ Respond with exactly this JSON:
   "confidenceNote": "any important caveat about prices or availability, or null if data is clear"
 }`;
 
-  const response = await groq.chat.completions.create({
+  const response = await getGroq().chat.completions.create({
     model: "llama-3.3-70b-versatile",
     messages: [{ role: "user", content: prompt }],
     max_tokens: 450,

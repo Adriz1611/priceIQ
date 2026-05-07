@@ -1,6 +1,5 @@
 import { chromium } from "playwright";
 import type { NormalizedProduct, SourceName } from "./types";
-import { parseQuery, scoreCandidate } from "./matcher";
 
 function detectCategory(query: string): { category: string; minPrice: number } {
   const q = query.toLowerCase();
@@ -38,19 +37,13 @@ function cleanProductName(name: string): string {
   return name
     .replace(/^Store Display Unit\s*[-–]\s*/i, "")
     .replace(/^Renewed\s*[-–]\s*/i, "")
-    .replace(/[A-Z][A-Z0-9]{4,}$/, "")
+    .replace(/[A-Z][A-Z0-9]{4,}$/, "") // strip Vijay Sales SKU suffix
     .trim();
 }
 
 function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 60);
 }
-
-const VS_HEADERS = {
-  "User-Agent": "Mozilla/5.0",
-  "Accept": "application/json",
-  "Accept-Language": "en-IN,en;q=0.9",
-};
 
 async function liveVS(
   query: string,
@@ -63,7 +56,9 @@ async function liveVS(
   const gql = `{products(search:${JSON.stringify(query)},pageSize:5,currentPage:1){items{id name sku url_key review_count rating_summary price_range{maximum_price{final_price{value}}} image{url} mrp}}}`;
   const url = `https://vsprod.vijaysales.com/graphql?query=${encodeURIComponent(gql)}&tp=${tp}`;
 
-  const res = await fetch(url, { headers: VS_HEADERS });
+  const res = await fetch(url, {
+    headers: { "User-Agent": "Mozilla/5.0", "Accept": "application/json", "Accept-Language": "en-IN,en;q=0.9" },
+  });
   const data = await res.json() as { data?: { products?: { items?: unknown[] } } };
   const items = (data?.data?.products?.items ?? []) as {
     name: string; sku: string; url_key: string;
@@ -72,50 +67,35 @@ async function liveVS(
     image: { url: string }; mrp?: number;
   }[];
 
-  const parsedQ = parseQuery(query, category, minPrice);
+  const item = items.find((i) => {
+    const p = i.price_range?.maximum_price?.final_price?.value;
+    return p != null && p >= minPrice;
+  });
+  if (!item) return null;
 
-  let bestScore = -Infinity;
-  let bestItem: typeof items[0] | null = null;
-  let bestCleanName = "";
+  const price = item.price_range?.maximum_price?.final_price?.value;
+  const cleanName = cleanProductName(item.name);
 
-  for (const item of items) {
-    const price = item.price_range?.maximum_price?.final_price?.value;
-    if (!price || price < minPrice) continue;
-    const cleanName = cleanProductName(item.name);
-    const match = scoreCandidate(cleanName, parsedQ);
-    if (match.accepted && (
-      match.score > bestScore ||
-      (match.score === bestScore && (item.review_count ?? 0) > (bestItem?.review_count ?? 0))
-    )) {
-      bestScore = match.score;
-      bestItem = item;
-      bestCleanName = cleanName;
-    }
-  }
-
-  if (!bestItem) return null;
-
-  const price = bestItem.price_range?.maximum_price?.final_price?.value;
   return {
-    name: bestCleanName,
+    name: cleanName,
     slug: `vs-${canonicalSlug}`,
     category,
     domain: "electronics",
-    brand: extractBrand(bestCleanName),
+    brand: extractBrand(cleanName),
     source: "vijaysales" as SourceName,
-    sourceId: bestItem.sku,
+    sourceId: item.sku,
     price,
     currency: "INR",
-    rating: bestItem.rating_summary ? bestItem.rating_summary / 20 : undefined,
-    reviewCount: bestItem.review_count || undefined,
-    url: `https://www.vijaysales.com/${bestItem.url_key}`,
-    imageUrl: bestItem.image?.url
-      ? bestItem.image.url.startsWith("http")
-        ? bestItem.image.url
-        : `https://www.vijaysales.com${bestItem.image.url}`
+    rating: item.rating_summary ? item.rating_summary / 20 : undefined,
+    reviewCount: item.review_count || undefined,
+    url: `https://www.vijaysales.com/${item.url_key}`,
+    imageUrl: item.image?.url
+      ? item.image.url.startsWith("http")
+        ? item.image.url
+        : `https://www.vijaysales.com${item.image.url}`
       : undefined,
     inStock: true,
-    extraData: bestItem.mrp ? { mrp: bestItem.mrp } : undefined,
+    extraData: item.mrp ? { mrp: item.mrp } : undefined,
   };
 }
 
@@ -141,12 +121,9 @@ async function liveAmazon(
     if (asins.length >= 10) break;
   }
 
-  const parsedQ = parseQuery(query, category, minPrice);
-  let bestScore = -Infinity;
-  let bestResult: {
-    title: string; price: number; asin: string;
-    rating?: number; reviewCount?: number; imageUrl?: string; brand?: string; inStock: boolean;
-  } | null = null;
+  // Extract model tokens from query to filter irrelevant ASINs early
+  const queryLower = query.toLowerCase();
+  const modelTokens = (queryLower.match(/[a-z]*\d+[a-z0-9]*/g) ?? []).filter((t) => t.length >= 2);
 
   for (const asin of asins) {
     await new Promise((r) => setTimeout(r, 400));
@@ -159,54 +136,41 @@ async function liveAmazon(
     const price = priceStr ? parseFloat(priceStr) : null;
     if (!title || !price || price < minPrice) continue;
 
-    const match = scoreCandidate(title, parsedQ);
-    if (!match.accepted || match.score <= bestScore) continue;
+    // Skip ASIN if title doesn't contain at least one model token from the query
+    if (modelTokens.length > 0) {
+      const titleLower = title.toLowerCase();
+      if (!modelTokens.some((t) => titleLower.includes(t))) continue;
+    }
 
-    bestScore = match.score;
     const ratingStr = pHtml.match(/([0-9.]+) out of 5 stars/)?.[1];
     const reviewStr = pHtml.match(/([0-9,]+) ratings/)?.[1]?.replace(/,/g, "");
     const imageUrl = pHtml.match(/"large":"(https:\/\/m\.media-amazon\.com\/images\/[^"]+)"/)?.[1];
     const brandText = pHtml.match(/<a id="bylineInfo"[^>]*>([^<]+)/)?.[1]?.trim();
-    const brand = brandText?.replace(/^Visit the /, "").replace(/ Store$/, "");
-    const inStock =
-      pHtml.includes('id="add-to-cart-button"') ||
+    const brand = brandText?.replace(/^Visit the /, "").replace(/ Store$/, "") ?? undefined;
+    const cleanTitle = cleanProductName(title);
+    // Check add-to-cart button presence (most reliable in-stock signal)
+    const inStock = pHtml.includes('id="add-to-cart-button"') ||
       pHtml.includes('name="submit.add-to-cart"') ||
       pHtml.includes('"availability":"https://schema.org/InStock"');
 
-    bestResult = {
-      title,
+    return {
+      name: cleanTitle,
+      slug: `amz-${canonicalSlug}`,
+      category,
+      domain: "electronics",
+      brand: brand ? extractBrand(brand) : extractBrand(cleanTitle),
+      source: "amazon" as SourceName,
+      sourceId: asin,
       price,
-      asin,
+      currency: "INR",
       rating: ratingStr ? parseFloat(ratingStr) : undefined,
       reviewCount: reviewStr ? parseInt(reviewStr) : undefined,
+      url: `https://www.amazon.in/dp/${asin}`,
       imageUrl: imageUrl ?? undefined,
-      brand: brand ?? undefined,
       inStock,
     };
-
-    // High-confidence match — no need to check remaining ASINs
-    if (bestScore >= 85) break;
   }
-
-  if (!bestResult) return null;
-
-  const cleanTitle = cleanProductName(bestResult.title);
-  return {
-    name: cleanTitle,
-    slug: `amz-${canonicalSlug}`,
-    category,
-    domain: "electronics",
-    brand: bestResult.brand ? extractBrand(bestResult.brand) : extractBrand(cleanTitle),
-    source: "amazon" as SourceName,
-    sourceId: bestResult.asin,
-    price: bestResult.price,
-    currency: "INR",
-    rating: bestResult.rating,
-    reviewCount: bestResult.reviewCount,
-    url: `https://www.amazon.in/dp/${bestResult.asin}`,
-    imageUrl: bestResult.imageUrl,
-    inStock: bestResult.inStock,
-  };
+  return null;
 }
 
 async function liveFlipkart(
@@ -237,26 +201,25 @@ async function liveFlipkart(
       waitUntil: "domcontentloaded",
       timeout: 25000,
     });
+    // Give JS time to render (CSS class selectors are unreliable; FK changes them)
     await page.waitForTimeout(3000);
 
-    // Collect up to 5 candidate cards; scoring happens in Node.js.
+    // page.evaluate must not contain named function declarations —
+    // tsx/esbuild injects __name() helpers that break in the browser sandbox.
     // page.evaluate must use only inline code — tsx/esbuild injects __name()
     // into named function declarations which breaks in the browser sandbox.
-    const candidates = await page.evaluate((minP: number) => {
-      const res: { name: string; price: number; url: string; imageUrl: string; rating: number | null }[] = [];
-      const seenUrls = new Set<string>();
-
+    const found = await page.evaluate((minP: number) => {
       const priceEls = Array.from(document.querySelectorAll("div, span")).filter((el) => {
         if (el.children.length > 0) return false;
         return /^₹[\d,]+$/.test((el as HTMLElement).innerText?.trim() || "");
       });
 
       for (const priceEl of priceEls) {
-        if (res.length >= 5) break;
-
         const price = parseInt((priceEl as HTMLElement).innerText.replace(/[^0-9]/g, ""));
         if (price < minP || price > 1000000) continue;
 
+        // Walk up to find a card container with BOTH a product link AND an img.
+        // Flipkart sometimes wraps only the price in <a>, with image/title outside.
         let container: Element | null = priceEl.parentElement;
         let link: HTMLAnchorElement | null = null;
         let img: HTMLImageElement | null = null;
@@ -268,13 +231,7 @@ async function liveFlipkart(
         }
         if (!link || !img || !container) continue;
 
-        const href = link.getAttribute("href") || "";
-        const url = href.startsWith("http")
-          ? href.split("?")[0]
-          : "https://www.flipkart.com" + href.split("?")[0];
-        if (seenUrls.has(url)) continue;
-        seenUrls.add(url);
-
+        // Within the card, pick the LOWEST price >= minP to get sale price, not MRP.
         let salePrice = price;
         for (const pe of Array.from(container.querySelectorAll("div, span"))) {
           if (pe.children.length > 0) continue;
@@ -307,28 +264,17 @@ async function liveFlipkart(
           if (r >= 1 && r <= 5 && /^\d\.\d$/.test(t)) { rating = r; break; }
         }
 
-        res.push({ name, price: salePrice, url, imageUrl: imgSrc, rating });
+        const href = link.getAttribute("href") || "";
+        const url = href.startsWith("http") ? href.split("?")[0] : "https://www.flipkart.com" + href.split("?")[0];
+        return { name, price: salePrice, url, imageUrl: imgSrc, rating };
       }
-      return res;
+      return null;
     }, minPrice);
 
     await page.close();
+    if (!found?.name || !found.price) return null;
 
-    const parsedQ = parseQuery(query, category, minPrice);
-    let bestScore = -Infinity;
-    let best: typeof candidates[0] | null = null;
-
-    for (const c of candidates) {
-      const match = scoreCandidate(c.name, parsedQ);
-      if (match.accepted && match.score > bestScore) {
-        bestScore = match.score;
-        best = c;
-      }
-    }
-
-    if (!best?.name || !best.price) return null;
-
-    const cleanName = cleanProductName(best.name);
+    const cleanName = cleanProductName(found.name);
     return {
       name: cleanName,
       slug: `fk-${canonicalSlug}`,
@@ -336,12 +282,12 @@ async function liveFlipkart(
       domain: "electronics",
       brand: extractBrand(cleanName),
       source: "flipkart" as SourceName,
-      sourceId: best.url.split("/p/")[1]?.split("?")[0] || canonicalSlug,
-      price: best.price,
+      sourceId: found.url.split("/p/")[1]?.split("?")[0] || canonicalSlug,
+      price: found.price,
       currency: "INR",
-      rating: best.rating ?? undefined,
-      url: best.url,
-      imageUrl: best.imageUrl || undefined,
+      rating: found.rating ?? undefined,
+      url: found.url,
+      imageUrl: found.imageUrl || undefined,
       inStock: true,
     };
   } finally {
@@ -355,10 +301,28 @@ export interface LiveSearchResult {
   category: string;
 }
 
+// Reject a scraper result that doesn't match the query's model identifiers.
+// Long tokens (4+ chars, e.g. "t500", "wh1000xm5", "128gb") must ALL match.
+// Short tokens (2-3 chars, e.g. "s24", "15") require at least one to match.
+function isRelevantMatch(productName: string, query: string): boolean {
+  const nameLower = productName.toLowerCase();
+  const queryLower = query.toLowerCase();
+  const modelTokens = (queryLower.match(/[a-z]*\d+[a-z0-9]*/g) ?? []).filter((t) => t.length >= 2);
+  if (modelTokens.length === 0) return true;
+  const longTokens = modelTokens.filter((t) => t.length >= 4);
+  const shortTokens = modelTokens.filter((t) => t.length < 4);
+  // All long tokens must be present in the product name
+  if (longTokens.length > 0 && !longTokens.every((t) => nameLower.includes(t))) return false;
+  // If no long tokens, at least one short token must match
+  if (longTokens.length === 0 && shortTokens.length > 0 && !shortTokens.some((t) => nameLower.includes(t))) return false;
+  return true;
+}
+
 export async function liveSearch(query: string): Promise<LiveSearchResult> {
   const { category, minPrice } = detectCategory(query);
   const canonicalSlug = slugify(query);
 
+  // Run VS and Amazon in parallel, Flipkart separately (needs browser)
   const [vsResult, amzResult] = await Promise.allSettled([
     liveVS(query, minPrice, category, canonicalSlug),
     liveAmazon(query, minPrice, category, canonicalSlug),
@@ -370,7 +334,9 @@ export async function liveSearch(query: string): Promise<LiveSearchResult> {
     vsResult.status === "fulfilled" ? vsResult.value : null,
     amzResult.status === "fulfilled" ? amzResult.value : null,
     fkResult,
-  ].filter((p): p is NormalizedProduct => p != null);
+  ]
+    .filter((p): p is NormalizedProduct => p != null)
+    .filter((p) => isRelevantMatch(p.name, query));
 
   return { products, canonicalSlug, category };
 }

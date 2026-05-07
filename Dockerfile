@@ -1,5 +1,5 @@
 # ── Stage 1: install dependencies ────────────────────────────────────────────
-FROM node:22-bookworm-slim AS deps
+FROM node:20-bookworm-slim AS deps
 
 # Playwright needs these system libs; install them once here so the cache layer
 # is reused on rebuilds even if source changes.
@@ -26,16 +26,13 @@ RUN npm ci
 # ── Stage 2: build Next.js ────────────────────────────────────────────────────
 FROM deps AS builder
 
-ARG GROQ_API_KEY
-ENV GROQ_API_KEY=${GROQ_API_KEY}
-
 COPY . .
 
 # All DB pages are force-dynamic so Next.js won't query the DB during build.
 RUN npm run build
 
 # ── Stage 3: production runtime ───────────────────────────────────────────────
-FROM node:22-bookworm-slim AS runner
+FROM node:20-bookworm-slim AS runner
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 \
@@ -54,13 +51,18 @@ COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
-# Prisma schema + full node_modules tree (needed for prisma db push at startup)
+# Full node_modules from builder — needed so the prisma CLI can load prisma.config.ts
+# (which requires effect, c12, jiti, and their transitive deps at runtime).
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
-COPY --from=builder /app/node_modules ./node_modules
 
 # Playwright browsers (downloaded by @playwright/browser-chromium in deps stage)
 COPY --from=deps /root/.cache/ms-playwright /root/.cache/ms-playwright
+# Playwright runtime libs
+COPY --from=builder /app/node_modules/playwright ./node_modules/playwright
+COPY --from=builder /app/node_modules/playwright-core ./node_modules/playwright-core
+
 COPY entrypoint.sh ./
 RUN chmod +x entrypoint.sh
 

@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PriceComparisonTable } from "@/components/product/PriceComparisonTable";
 import { AIRecommendation } from "@/components/product/AIRecommendation";
+import { PriceHistoryChart } from "@/components/product/PriceHistoryChart";
 import { RefreshPricesButton } from "@/components/product/RefreshPricesButton";
 
 interface Props {
@@ -195,6 +196,9 @@ export default async function ProductPage({ params }: Props) {
             <TabsTrigger value="compare" className="text-sm rounded-lg data-[state=active]:shadow-sm">
               Price Comparison
             </TabsTrigger>
+            <TabsTrigger value="history" className="text-sm rounded-lg data-[state=active]:shadow-sm">
+              Price History
+            </TabsTrigger>
             <TabsTrigger value="ai" className="text-sm rounded-lg data-[state=active]:shadow-sm">
               AI Analysis
             </TabsTrigger>
@@ -202,6 +206,12 @@ export default async function ProductPage({ params }: Props) {
 
           <TabsContent value="compare">
             <PriceComparisonTable listings={listingsForTable} />
+          </TabsContent>
+
+          <TabsContent value="history">
+            <div className="rounded-2xl border border-border p-6 sm:p-8 bg-card">
+              <PriceHistoryChart productId={product.id} />
+            </div>
           </TabsContent>
 
           <TabsContent value="ai">

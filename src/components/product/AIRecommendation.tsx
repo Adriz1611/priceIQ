@@ -46,11 +46,15 @@ export function AIRecommendation({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ productId }),
       });
-      const { data } = await res.json();
-      setAnalysis(data);
-      if (force) toast.success("Analysis refreshed");
+      const json = await res.json();
+      if (json.success && json.data) {
+        setAnalysis(json.data);
+        if (force) toast.success("Analysis refreshed");
+      } else if (force) {
+        toast.error(json.error ?? "Could not refresh analysis");
+      }
     } catch {
-      toast.error("Failed to load analysis");
+      if (force) toast.error("Network error. Try again.");
     } finally {
       setLoading(false);
       setRefreshing(false);

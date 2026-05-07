@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { analyzeProduct, generateProductSummary } from "@/lib/ai/groq";
@@ -39,48 +41,52 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: "No listings" }, { status: 400 });
   }
 
-  const result = await analyzeProduct(
-    product.name,
-    product.category,
-    product.domain,
-    product.listings.map((l: {
-      source: string;
-      price: number | null;
-      currency: string;
-      rating: number | null;
-      reviewCount: number | null;
-      inStock: boolean;
-      extraData: unknown;
-    }) => ({
-      source: l.source,
-      price: l.price,
-      currency: l.currency,
-      rating: l.rating,
-      reviewCount: l.reviewCount,
-      inStock: l.inStock,
-      extraData: l.extraData as Record<string, unknown> | null,
-    }))
-  );
+  try {
+    const result = await analyzeProduct(
+      product.name,
+      product.category,
+      product.domain,
+      product.listings.map((l: {
+        source: string;
+        price: number | null;
+        currency: string;
+        rating: number | null;
+        reviewCount: number | null;
+        inStock: boolean;
+        extraData: unknown;
+      }) => ({
+        source: l.source,
+        price: l.price,
+        currency: l.currency,
+        rating: l.rating,
+        reviewCount: l.reviewCount,
+        inStock: l.inStock,
+        extraData: l.extraData as Record<string, unknown> | null,
+      }))
+    );
 
-  const analysis = await prisma.aIAnalysis.create({
-    data: {
-      productId: product.id,
-      summary: result.summary,
-      recommendation: result.recommendation,
-      bestSource: result.bestSource,
-      confidenceNote: result.confidenceNote,
-    },
-  });
+    const analysis = await prisma.aIAnalysis.create({
+      data: {
+        productId: product.id,
+        summary: result.summary,
+        recommendation: result.recommendation,
+        bestSource: result.bestSource,
+        confidenceNote: result.confidenceNote,
+      },
+    });
 
-  // Generate product description if missing
-  if (!product.description) {
-    try {
-      const summary = await generateProductSummary(product.name, product.category);
-      if (summary) {
-        await prisma.product.update({ where: { id: product.id }, data: { description: summary } });
-      }
-    } catch { /* best-effort */ }
+    // Generate product description if missing (best-effort)
+    if (!product.description) {
+      generateProductSummary(product.name, product.category)
+        .then((summary) => {
+          if (summary) prisma.product.update({ where: { id: product.id }, data: { description: summary } });
+        })
+        .catch(() => {});
+    }
+
+    return NextResponse.json({ success: true, data: analysis, cached: false });
+  } catch (err) {
+    console.error("AI analyze error:", err);
+    return NextResponse.json({ success: false, error: "AI analysis unavailable. Try refreshing." }, { status: 503 });
   }
-
-  return NextResponse.json({ success: true, data: analysis, cached: false });
 }
