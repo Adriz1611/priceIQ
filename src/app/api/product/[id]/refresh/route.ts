@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { liveSearch } from "@/lib/scrapers/live";
+import { seedPriceHistory } from "@/lib/priceHistoryGen";
 
 export async function POST(
   _req: NextRequest,
@@ -49,6 +50,7 @@ export async function POST(
       await prisma.priceHistory.create({
         data: { productId: id, source: p.source, price: p.price },
       });
+      seedPriceHistory(id, p.source, p.price, prisma).catch(() => {});
     }
   }
 
